@@ -1,0 +1,56 @@
+---
+title: "Memory analysis"
+output: html_notebook
+---
+# Libraries
+```{r}
+library(tidyr)
+library(readr)
+library(ggplot2)
+library(dplyr)
+```
+# Questions
+- What is the average response time by gender and by age ?
+- What is the  average moves require to open the 12 pairs of cards?
+- There is a relationship between age or gender that determinate the average time to open all cards?
+- There is a pattern in the order of open card ?
+- There is a improvement in the  persosn how play the game many time?
+
+# Reading data
+```{r}
+moves = read_csv("./moves")
+user = read_csv("./users")
+games = read_csv("./games")
+```
+```{r}
+strToList = function (str){
+  str = gsub("\\[","",str)
+  str = gsub("\\]","",str)
+  return(strsplit(str,","))
+} 
+strToIntList=function (str){
+  str= strToList(str)
+  #print(str)
+  return(lapply(str,as.integer))
+  #return(as.integer(str[[1]])) funziona con una stringa ma no con mutate
+}
+#y = strToIntList("[2,1]")
+
+```
+
+```{r}
+ full_table<-moves %>%
+  mutate(card_1=strToIntList(card1), card_2=strToIntList(card2)) %>%
+  inner_join(games, by=c("game"="_id"))%>%
+  inner_join(user,by=c("user"="_id"))
+?separate
+
+```
+
+
+```{r}
+full_table%>%group_by(user)%>%
+  summarise(count = n()) %>% 
+  arrange(-count)
+```
+
