@@ -3,11 +3,12 @@ title: "Memory analysis"
 output: html_notebook
 ---
 # Libraries
-```{r}
+```{r include=FALSE}
 library(tidyr)
 library(readr)
 library(ggplot2)
 library(dplyr)
+library(mongolite)
 ```
 # Questions
 - What is the average response time by gender and by age ?
@@ -18,28 +19,39 @@ library(dplyr)
 
 # Reading data
 ```{r}
-moves = read_csv("./moves")
-user = read_csv("./users")
-games = read_csv("./games")
+urldb='mongodb+srv://admin:AvrilFG123@mystore.96rrl.mongodb.net/game-memory?retryWrites=true&w=majority'
+connectionGames = mongo(collection="games", url=urldb)
+connectionUsers = mongo(collection="users", url=urldb)
+connectionMoves = mongo(collection="moves", url=urldb)
+
+games <- conectionGames$find('{}')%>%as_tibble()
+user <- connectionUsers$find('{}')%>%as_tibble()
+moves <- connectionMoves$find('{}')%>%as_tibble()
+
+
+#moves = read_csv("./moves")
+#user = read_csv("./users")
+#games = read_csv("./games")
 ```
+
 ```{r}
-strToList = function (str){
-  str = gsub("\\[","",str)
-  str = gsub("\\]","",str)
-  return(strsplit(str,","))
-} 
-strToIntList=function (str){
-  str= strToList(str)
-  #print(str)
-  return(lapply(str,as.integer))
-  #return(as.integer(str[[1]])) funziona con una stringa ma no con mutate
+separatelist <- function(df,column, names){
+  return(
+    df%>%unnest(column)%>%group_by(id) %>% 
+       mutate(col=names) %>% #add a column indicator
+       spread(key=col, value=card1)
+  )
 }
-#y = strToIntList("[2,1]")
-
 ```
 
+
+
 ```{r}
- full_table<-moves %>%
+x <- do.call(rbind, moves$card1)
+colnames(c)
+cbind(moves,x)
+ full_table<-moves %>% mutate(id = 1:nrow(moves)) %>% 
+
   mutate(card_1=strToIntList(card1), card_2=strToIntList(card2)) %>%
   inner_join(games, by=c("game"="_id"))%>%
   inner_join(user,by=c("user"="_id"))

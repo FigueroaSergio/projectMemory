@@ -1499,6 +1499,8 @@ window.initializeCodeFolding = function(show) {
   // select all R code blocks
   var rCodeBlocks = $('pre.r, pre.python, pre.bash, pre.sql, pre.cpp, pre.stan, pre.julia, pre.foldable');
   rCodeBlocks.each(function() {
+    // skip if the block has fold-none class
+    if ($(this).hasClass('fold-none')) return;
 
     // create a collapsable div to wrap the code in
     var div = $('<div class="collapse r-code-collapse"></div>');
@@ -1769,14 +1771,6 @@ pre code {
 <div id="libraries" class="section level1">
 <h1>Libraries</h1>
 <!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeSh0aWR5cilcbmxpYnJhcnkocmVhZHIpXG5saWJyYXJ5KGdncGxvdDIpXG5saWJyYXJ5KGRwbHlyKVxuYGBgIn0= -->
-<pre class="r"><code>library(tidyr)
-library(readr)
-library(ggplot2)
-library(dplyr)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 </div>
 <div id="questions" class="section level1">
@@ -1796,40 +1790,31 @@ time?</li>
 <h1>Reading data</h1>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubW92ZXMgPSByZWFkX2NzdihcIi4vbW92ZXNcIilcbnVzZXIgPSByZWFkX2NzdihcIi4vdXNlcnNcIilcbmdhbWVzID0gcmVhZF9jc3YoXCIuL2dhbWVzXCIpXG5gYGAifQ== -->
-<pre class="r"><code>moves = read_csv(&quot;./moves&quot;)
-user = read_csv(&quot;./users&quot;)
-games = read_csv(&quot;./games&quot;)</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudXJsZGI9J21vbmdvZGIrc3J2Oi8vYWRtaW46QXZyaWxGRzEyM0BteXN0b3JlLjk2cnJsLm1vbmdvZGIubmV0L2dhbWUtbWVtb3J5P3JldHJ5V3JpdGVzPXRydWUmdz1tYWpvcml0eSdcbmNvbm5lY3Rpb25HYW1lcyA9IG1vbmdvKGNvbGxlY3Rpb249XCJnYW1lc1wiLCB1cmw9dXJsZGIpXG5gYGAifQ== -->
+<pre class="r"><code>urldb=&#39;mongodb+srv://admin:AvrilFG123@mystore.96rrl.mongodb.net/game-memory?retryWrites=true&amp;w=majority&#39;
+connectionGames = mongo(collection=&quot;games&quot;, url=urldb)</code></pre>
 <!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiRXJyb3IgaW4gbW9uZ28oY29sbGVjdGlvbiA9IFwiZ2FtZXNcIiwgdXJsID0gdXJsZGIpIDogXG4gIG5vbiB0cm92byBsYSBmdW56aW9uZSBcIm1vbmdvXCJcbiJ9 -->
+<pre><code>Error in mongo(collection = &quot;games&quot;, url = urldb) : 
+  non trovo la funzione &quot;mongo&quot;</code></pre>
+<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc3RyVG9MaXN0ID0gZnVuY3Rpb24gKHN0cil7XG4gIHN0ciA9IGdzdWIoXCJcXFxcW1wiLFwiXCIsc3RyKVxuICBzdHIgPSBnc3ViKFwiXFxcXF1cIixcIlwiLHN0cilcbiAgcmV0dXJuKHN0cnNwbGl0KHN0cixcIixcIikpXG59IFxuc3RyVG9JbnRMaXN0PWZ1bmN0aW9uIChzdHIpe1xuICBzdHI9IHN0clRvTGlzdChzdHIpXG4gICNwcmludChzdHIpXG4gIHJldHVybihsYXBwbHkoc3RyLGFzLmludGVnZXIpKVxuICAjcmV0dXJuKGFzLmludGVnZXIoc3RyW1sxXV0pKSBmdW56aW9uYSBjb24gdW5hIHN0cmluZ2EgbWEgbm8gY29uIG11dGF0ZVxufVxuI3kgPSBzdHJUb0ludExpc3QoXCJbMiwxXVwiKVxuXG5gYGAifQ== -->
-<pre class="r"><code>strToList = function (str){
-  str = gsub(&quot;\\[&quot;,&quot;&quot;,str)
-  str = gsub(&quot;\\]&quot;,&quot;&quot;,str)
-  return(strsplit(str,&quot;,&quot;))
-} 
-strToIntList=function (str){
-  str= strToList(str)
-  #print(str)
-  return(lapply(str,as.integer))
-  #return(as.integer(str[[1]])) funziona con una stringa ma no con mutate
-}
-#y = strToIntList(&quot;[2,1]&quot;)
-</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc2VwYXJhdGXDkWlzdCA8LSBmdW5jdGlvbihkZixjb2x1bW4sIG5hbWVzKXtcbiAgcmV0dXJuKFxuICAgIGRmJT4ldW5uZXN0KGNvbHVtbiklPiVncm91cF9ieShpZCkgJT4lIFxuICAgICAgIG11dGF0ZShjb2w9bmFtZXMpICU+JSAjYWRkIGEgY29sdW1uIGluZGljYXRvclxuICAgICAgIHNwcmVhZChrZXk9Y29sLCB2YWx1ZT1jYXJkMSlcbiAgKVxufVxuYGBgIn0= -->
+<pre class="r"><code>separateÑist &lt;- function(df,column, names){
+  return(
+    df%&gt;%unnest(column)%&gt;%group_by(id) %&gt;% 
+       mutate(col=names) %&gt;% #add a column indicator
+       spread(key=col, value=card1)
+  )
+}</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuIGZ1bGxfdGFibGU8LW1vdmVzICU+JVxuICBtdXRhdGUoY2FyZF8xPXN0clRvSW50TGlzdChjYXJkMSksIGNhcmRfMj1zdHJUb0ludExpc3QoY2FyZDIpKSAlPiVcbiAgaW5uZXJfam9pbihnYW1lcywgYnk9YyhcImdhbWVcIj1cIl9pZFwiKSklPiVcbiAgaW5uZXJfam9pbih1c2VyLGJ5PWMoXCJ1c2VyXCI9XCJfaWRcIikpXG4/c2VwYXJhdGVcblxuYGBgIn0= -->
-<pre class="r"><code> full_table&lt;-moves %&gt;%
-  mutate(card_1=strToIntList(card1), card_2=strToIntList(card2)) %&gt;%
-  inner_join(games, by=c(&quot;game&quot;=&quot;_id&quot;))%&gt;%
-  inner_join(user,by=c(&quot;user&quot;=&quot;_id&quot;))
-?separate
-</code></pre>
-<!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
@@ -1844,7 +1829,7 @@ strToIntList=function (str){
 <!-- rnb-text-end -->
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiTWVtb3J5IGFuYWx5c2lzIgpvdXRwdXQ6IGh0bWxfbm90ZWJvb2sKLS0tCiMgTGlicmFyaWVzCmBgYHtyfQpsaWJyYXJ5KHRpZHlyKQpsaWJyYXJ5KHJlYWRyKQpsaWJyYXJ5KGdncGxvdDIpCmxpYnJhcnkoZHBseXIpCmBgYAojIFF1ZXN0aW9ucwotIFdoYXQgaXMgdGhlIGF2ZXJhZ2UgcmVzcG9uc2UgdGltZSBieSBnZW5kZXIgYW5kIGJ5IGFnZSA/Ci0gV2hhdCBpcyB0aGUgIGF2ZXJhZ2UgbW92ZXMgcmVxdWlyZSB0byBvcGVuIHRoZSAxMiBwYWlycyBvZiBjYXJkcz8KLSBUaGVyZSBpcyBhIHJlbGF0aW9uc2hpcCBiZXR3ZWVuIGFnZSBvciBnZW5kZXIgdGhhdCBkZXRlcm1pbmF0ZSB0aGUgYXZlcmFnZSB0aW1lIHRvIG9wZW4gYWxsIGNhcmRzPwotIFRoZXJlIGlzIGEgcGF0dGVybiBpbiB0aGUgb3JkZXIgb2Ygb3BlbiBjYXJkID8KLSBUaGVyZSBpcyBhIGltcHJvdmVtZW50IGluIHRoZSAgcGVyc29zbiBob3cgcGxheSB0aGUgZ2FtZSBtYW55IHRpbWU/CgojIFJlYWRpbmcgZGF0YQpgYGB7cn0KbW92ZXMgPSByZWFkX2NzdigiLi9tb3ZlcyIpCnVzZXIgPSByZWFkX2NzdigiLi91c2VycyIpCmdhbWVzID0gcmVhZF9jc3YoIi4vZ2FtZXMiKQpgYGAKYGBge3J9CnN0clRvTGlzdCA9IGZ1bmN0aW9uIChzdHIpewogIHN0ciA9IGdzdWIoIlxcWyIsIiIsc3RyKQogIHN0ciA9IGdzdWIoIlxcXSIsIiIsc3RyKQogIHJldHVybihzdHJzcGxpdChzdHIsIiwiKSkKfSAKc3RyVG9JbnRMaXN0PWZ1bmN0aW9uIChzdHIpewogIHN0cj0gc3RyVG9MaXN0KHN0cikKICAjcHJpbnQoc3RyKQogIHJldHVybihsYXBwbHkoc3RyLGFzLmludGVnZXIpKQogICNyZXR1cm4oYXMuaW50ZWdlcihzdHJbWzFdXSkpIGZ1bnppb25hIGNvbiB1bmEgc3RyaW5nYSBtYSBubyBjb24gbXV0YXRlCn0KI3kgPSBzdHJUb0ludExpc3QoIlsyLDFdIikKCmBgYAoKYGBge3J9CiBmdWxsX3RhYmxlPC1tb3ZlcyAlPiUKICBtdXRhdGUoY2FyZF8xPXN0clRvSW50TGlzdChjYXJkMSksIGNhcmRfMj1zdHJUb0ludExpc3QoY2FyZDIpKSAlPiUKICBpbm5lcl9qb2luKGdhbWVzLCBieT1jKCJnYW1lIj0iX2lkIikpJT4lCiAgaW5uZXJfam9pbih1c2VyLGJ5PWMoInVzZXIiPSJfaWQiKSkKP3NlcGFyYXRlCgpgYGAKCgpgYGB7cn0KZnVsbF90YWJsZSU+JWdyb3VwX2J5KHVzZXIpJT4lCiAgc3VtbWFyaXNlKGNvdW50ID0gbigpKSAlPiUgCiAgYXJyYW5nZSgtY291bnQpCmBgYAoKCg==</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiTWVtb3J5IGFuYWx5c2lzIgpvdXRwdXQ6IGh0bWxfbm90ZWJvb2sKLS0tCiMgTGlicmFyaWVzCmBgYHtyIGluY2x1ZGU9RkFMU0V9CmxpYnJhcnkodGlkeXIpCmxpYnJhcnkocmVhZHIpCmxpYnJhcnkoZ2dwbG90MikKbGlicmFyeShkcGx5cikKbGlicmFyeShtb25nb2xpdGUpCmBgYAojIFF1ZXN0aW9ucwotIFdoYXQgaXMgdGhlIGF2ZXJhZ2UgcmVzcG9uc2UgdGltZSBieSBnZW5kZXIgYW5kIGJ5IGFnZSA/Ci0gV2hhdCBpcyB0aGUgIGF2ZXJhZ2UgbW92ZXMgcmVxdWlyZSB0byBvcGVuIHRoZSAxMiBwYWlycyBvZiBjYXJkcz8KLSBUaGVyZSBpcyBhIHJlbGF0aW9uc2hpcCBiZXR3ZWVuIGFnZSBvciBnZW5kZXIgdGhhdCBkZXRlcm1pbmF0ZSB0aGUgYXZlcmFnZSB0aW1lIHRvIG9wZW4gYWxsIGNhcmRzPwotIFRoZXJlIGlzIGEgcGF0dGVybiBpbiB0aGUgb3JkZXIgb2Ygb3BlbiBjYXJkID8KLSBUaGVyZSBpcyBhIGltcHJvdmVtZW50IGluIHRoZSAgcGVyc29zbiBob3cgcGxheSB0aGUgZ2FtZSBtYW55IHRpbWU/CgojIFJlYWRpbmcgZGF0YQpgYGB7cn0KdXJsZGI9J21vbmdvZGIrc3J2Oi8vYWRtaW46QXZyaWxGRzEyM0BteXN0b3JlLjk2cnJsLm1vbmdvZGIubmV0L2dhbWUtbWVtb3J5P3JldHJ5V3JpdGVzPXRydWUmdz1tYWpvcml0eScKY29ubmVjdGlvbkdhbWVzID0gbW9uZ28oY29sbGVjdGlvbj0iZ2FtZXMiLCB1cmw9dXJsZGIpCmNvbm5lY3Rpb25Vc2VycyA9IG1vbmdvKGNvbGxlY3Rpb249InVzZXJzIiwgdXJsPXVybGRiKQpjb25uZWN0aW9uTW92ZXMgPSBtb25nbyhjb2xsZWN0aW9uPSJtb3ZlcyIsIHVybD11cmxkYikKCmdhbWVzIDwtIGNvbmVjdGlvbkdhbWVzJGZpbmQoJ3t9JyklPiVhc190aWJibGUoKQp1c2VyIDwtIGNvbm5lY3Rpb25Vc2VycyRmaW5kKCd7fScpJT4lYXNfdGliYmxlKCkKbW92ZXMgPC0gY29ubmVjdGlvbk1vdmVzJGZpbmQoJ3t9JyklPiVhc190aWJibGUoKQoKCiNtb3ZlcyA9IHJlYWRfY3N2KCIuL21vdmVzIikKI3VzZXIgPSByZWFkX2NzdigiLi91c2VycyIpCiNnYW1lcyA9IHJlYWRfY3N2KCIuL2dhbWVzIikKYGBgCgpgYGB7cn0Kc2VwYXJhdGXDkWlzdCA8LSBmdW5jdGlvbihkZixjb2x1bW4sIG5hbWVzKXsKICByZXR1cm4oCiAgICBkZiU+JXVubmVzdChjb2x1bW4pJT4lZ3JvdXBfYnkoaWQpICU+JSAKICAgICAgIG11dGF0ZShjb2w9bmFtZXMpICU+JSAjYWRkIGEgY29sdW1uIGluZGljYXRvcgogICAgICAgc3ByZWFkKGtleT1jb2wsIHZhbHVlPWNhcmQxKQogICkKfQpgYGAKCgoKYGBge3J9CnggPC0gZG8uY2FsbChyYmluZCwgbW92ZXMkY2FyZDEpCmNvbG5hbWVzKGMpCmNiaW5kKG1vdmVzLHgpCiBmdWxsX3RhYmxlPC1tb3ZlcyAlPiUgbXV0YXRlKGlkID0gMTpucm93KG1vdmVzKSkgJT4lIAoKICBtdXRhdGUoY2FyZF8xPXN0clRvSW50TGlzdChjYXJkMSksIGNhcmRfMj1zdHJUb0ludExpc3QoY2FyZDIpKSAlPiUKICBpbm5lcl9qb2luKGdhbWVzLCBieT1jKCJnYW1lIj0iX2lkIikpJT4lCiAgaW5uZXJfam9pbih1c2VyLGJ5PWMoInVzZXIiPSJfaWQiKSkKP3NlcGFyYXRlCgpgYGAKCgpgYGB7cn0KZnVsbF90YWJsZSU+JWdyb3VwX2J5KHVzZXIpJT4lCiAgc3VtbWFyaXNlKGNvdW50ID0gbigpKSAlPiUgCiAgYXJyYW5nZSgtY291bnQpCmBgYAoK</div>
 
 
 
