@@ -9,37 +9,38 @@ library(readr)
 library(ggplot2)
 library(dplyr)
 library(mongolite)
+library(modelr)
+library(corrplot)
+
 ```
 # Questions
 - What is the average response time by gender and by age ?
 - What is the  average moves require to open the 12 pairs of cards?
 - There is a relationship between age or gender that determinate the average time to open all cards?
 - There is a pattern in the order of open card ?
-- There is a improvement in the  persosn how play the game many time?
+- There is a improvement in the  persons how play the game many time?
 
-# Reading data
+# Exporting Data
 ```{r}
 urldb='mongodb+srv://admin:AvrilFG123@mystore.96rrl.mongodb.net/game-memory?retryWrites=true&w=majority'
 connectionGames = mongo(collection="games", url=urldb)
 connectionUsers = mongo(collection="users", url=urldb)
 connectionMoves = mongo(collection="moves", url=urldb)
 
-games <- conectionGames$find('{}')%>%as_tibble()
-user <- connectionUsers$find('{}')%>%as_tibble()
+games <- connectionGames$find('{}',fields = '{"user":true}')%>%as_tibble()
+user <- connectionUsers$find('{}',fields = '{"age" : true,"sex":true,"email":true}')%>%as_tibble()
 moves <- connectionMoves$find('{}')%>%as_tibble()
-
-
-#moves = read_csv("./moves")
-#user = read_csv("./users")
-#games = read_csv("./games")
 ```
 
+
 ```{r}
-separatelist <- function(df,column, names){
+
+separateList <- function(df,column, names){
   return(
-    df%>%unnest(column)%>%group_by(id) %>% 
-       mutate(col=names) %>% #add a column indicator
-       spread(key=col, value=card1)
+    df%>%unnest(column )%>%
+      group_by(id) %>% 
+      mutate(col=names) %>% #add a column indicator
+      spread(key=col, value=column)
   )
 }
 ```
@@ -47,22 +48,131 @@ separatelist <- function(df,column, names){
 
 
 ```{r}
-x <- do.call(rbind, moves$card1)
-colnames(c)
-cbind(moves,x)
  full_table<-moves %>% mutate(id = 1:nrow(moves)) %>% 
-
-  mutate(card_1=strToIntList(card1), card_2=strToIntList(card2)) %>%
+  separateList('card1',c('x1','y1','emoji1')) %>%   
+  separateList('card2',c('x2','y2','emoji2')) %>%
   inner_join(games, by=c("game"="_id"))%>%
   inner_join(user,by=c("user"="_id"))
-?separate
-
 ```
 
 
 ```{r}
-full_table%>%group_by(user)%>%
-  summarise(count = n()) %>% 
-  arrange(-count)
+user_summarise <- full_table %>%
+    arrange(start) %>% 
+    group_by(game, email, sex ) %>% 
+    mutate(time=end-start) %>%
+    summarise(count = n(),
+              mean = mean(time), 
+              score=mean(match), 
+              start_game=first(start), 
+              end_game=last(end), 
+              firstEmoji=first(emoji1), 
+              lastEmoji=last(emoji2)) %>% 
+    arrange(-count)
 ```
+```{r}
+ggplot(data=user_summarise)+
+  geom_bar(mapping = aes(x = email, fill = sex))
+```
+
+```{r}
+ggplot(data=user_summarise, mapping = aes(x = start_game, y=score, color=email))+
+  geom_point()
+```
+```{r}
+ggplot(data=full_table) +
+  geom_bar(mapping = aes(x = sex, fill = match))
+```
+```{r}
+user_summarise%>%
+  arrange(firstEmoji)%>%
+    ggplot() + geom_bar(mapping = aes(x = firstEmoji,fill=firstEmoji))
+user_summarise%>%
+  arrange(firstEmoji)%>%
+  ggplot()+
+    geom_bar(mapping = aes(x = lastEmoji,fill=lastEmoji))
+
+
+```
+
+
+
+```{r}
+user_summarise <- user_summarise %>% 
+  group_by(email) %>%
+  summarise(number_games=n())%>%
+  inner_join(user_summarise,by=c('email'='email'))
+```
+
+
+
+```{r}
+more_games<-user_summarise%>%filter(number_games>10)
+less_games<-user_summarise%>%filter(number_games<10)
+
+less_games %>%
+  group_by(count) %>%
+  summarise(total= n()) %>%
+  ggplot( aes(x = 2, y = total, fill =count)) +
+  geom_bar(stat = "identity", color = "white") +
+  coord_polar("y",start=0)+
+  xlim(0.5, 2.5)
+less_games%>% 
+  mutate(ranges=cut(count,10))%>%
+  group_by(ranges) %>%
+  summarise(total= n()) %>%
+  ggplot( aes(x = 2, y = total, fill =ranges)) +
+  geom_bar(stat = "identity", color = "white") +
+  coord_polar("y",start=0)+
+  xlim(0.5, 2.5)
+```
+
+```{r}
+gian<-more_games%>%filter(email=='gperfects02@gmail.com')%>%
+  arrange(start_game)%>%
+  mutate(id = 1:nrow(more_games
+                     %>%filter(email=='gperfects02@gmail.com'))) %>%
+  select(id, everything())
+gian %>% 
+  ggplot(aes(x = start_game, y=score)) + 
+  geom_line() 
+gian_mod <- lm(score ~ id, data = gian)
+gian_mod2 <- lm(score ~ log(id), data = gian)
+summary(gian_mod)
+summary(gian_mod2)
+gian%>% 
+  add_predictions(gian_mod2)%>%
+  ggplot(aes(x = id, y=score))+
+  geom_point()+
+  geom_abline(intercept = gian_mod$coefficients[1], 
+              slope = gian_mod$coefficients[2], 
+              color = "red")+
+   geom_line(aes(id,pred))
+```
+
+
+
+```{r}
+rita<-more_games%>%filter(email=='ritamorocutti@gmail.com')%>%
+  arrange(start_game)%>%
+  mutate(id = 1:nrow(more_games%>%filter(email=='ritamorocutti@gmail.com'))) %>%
+  select(id, everything())
+rita %>% 
+  ggplot(aes(x = start_game, y=score)) + 
+  geom_line() 
+rita_mod <- lm(score ~ id, data = rita)
+rita_mod2 <- lm(score ~ log(id), data = rita)
+summary(rita_mod)
+summary(rita_mod2)
+rita %>%  add_predictions(rita_mod2)%>%
+  ggplot(aes(x = id, y=score)) + 
+  geom_point() +
+  geom_abline(intercept = rita_mod$coefficients[1], 
+              slope = rita_mod$coefficients[2], 
+              color = "red")+
+  geom_line(aes(id,pred))
+```
+
+
+In the last two graphs we can observe there is an interesting pattern, periodic increase and decrease in the score. Also we can observe there are some days when the score is bigger so should we should  try to discover if there is and special day of the weekend  
 
