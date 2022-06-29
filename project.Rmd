@@ -11,7 +11,7 @@ library(dplyr)
 library(mongolite)
 library(modelr)
 library(corrplot)
-
+library(cluster)
 ```
 # Questions
 - What is the average response time by gender and by age ?
@@ -107,16 +107,9 @@ user_summarise <- user_summarise %>%
 
 
 ```{r}
-more_games<-user_summarise%>%filter(number_games>10)
-less_games<-user_summarise%>%filter(number_games<10)
+more_games<-user_summarise%>%filter(number_games>=6)
+less_games<-user_summarise%>%filter(number_games<6)
 
-less_games %>%
-  group_by(count) %>%
-  summarise(total= n()) %>%
-  ggplot( aes(x = 2, y = total, fill =count)) +
-  geom_bar(stat = "identity", color = "white") +
-  coord_polar("y",start=0)+
-  xlim(0.5, 2.5)
 less_games%>% 
   mutate(ranges=cut(count,10))%>%
   group_by(ranges) %>%
@@ -126,6 +119,29 @@ less_games%>%
   coord_polar("y",start=0)+
   xlim(0.5, 2.5)
 ```
+
+```{r}
+full_table%>%
+  ggplot(aes(x1,y1))+
+  geom_bin_2d()
+full_table%>%
+  ggplot(aes(x2,y2))+
+  geom_bin_2d()
+
+```
+```{r}
+full_table%>%
+ ggplot(aes(emoji1,emoji2))+
+  geom_bin_2d()+scale_fill_distiller(palette = "Spectral")
+full_table %>%
+  group_by(emoji1,emoji2)%>%
+  summarise(count=n())
+```
+```{r}
+
+```
+
+
 
 ```{r}
 gian<-more_games%>%filter(email=='gperfects02@gmail.com')%>%
