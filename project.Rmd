@@ -12,6 +12,7 @@ library(mongolite)
 library(modelr)
 library(corrplot)
 library(cluster)
+library(gridExtra)
 ```
 # Questions
 - What is the average response time by gender and by age ?
@@ -68,7 +69,7 @@ user_summarise <- full_table %>%
               end_game=last(end), 
               firstEmoji=first(emoji1), 
               lastEmoji=last(emoji2)) %>% 
-    arrange(-count)
+              arrange(-count)
 ```
 ```{r}
 ggplot(data=user_summarise)+
@@ -84,14 +85,38 @@ ggplot(data=full_table) +
   geom_bar(mapping = aes(x = sex, fill = match))
 ```
 ```{r}
+colors1=c( "#5F00AD",
+    "#7700B8",
+    "#7E00C2",
+    "#7D00B8",
+    "#8700B8",
+    "#9900B8",
+    "#9A00A8",
+    "#A30096",
+    "#A8007B",
+    "#B30071",
+    "#B30056",
+    "#A80051",
+    "#C20067",
+    "#CC0074",
+    "#FF05A8",
+    "#FF2E8C",
+    "#FF584D",
+    "#FF7857",
+    "#FFAE57",
+    "#FFC466",
+    "#FFDE85",
+    "#FFF4B8",
+    "#FAFFC2")
 user_summarise%>%
   arrange(firstEmoji)%>%
-    ggplot() + geom_bar(mapping = aes(x = firstEmoji,fill=firstEmoji))
+    ggplot() + geom_bar(mapping = aes(x = firstEmoji,fill=firstEmoji))+
+  scale_fill_manual(values = colors1)
 user_summarise%>%
   arrange(firstEmoji)%>%
   ggplot()+
-    geom_bar(mapping = aes(x = lastEmoji,fill=lastEmoji))
-
+    geom_bar(mapping = aes(x = lastEmoji,fill=lastEmoji))+
+  scale_fill_manual(values = colors1)
 
 ```
 
@@ -101,23 +126,67 @@ user_summarise%>%
 user_summarise <- user_summarise %>% 
   group_by(email) %>%
   summarise(number_games=n())%>%
-  inner_join(user_summarise,by=c('email'='email'))
+  inner_join(user_summarise,by=c('email'='email'))%>%
+  mutate(ranges=cut(count,seq(8, 48, 4)))
 ```
 
+```{r}
+colors=c( "#5F00AD",
+    "#7700B8",
+    "#7E00C2",
+    "#7D00B8",
+    "#8700B8",
+    "#9900B8",
+    "#9A00A8",
+    "#A30096",
+    "#A8007B",
+    "#B30071",
+    "#B30056",
+    "#A80051",
+    "#C20067",
+    "#CC0074",
+    "#FF05A8",
+    "#FF2E8C",
+    "#FF584D",
+    "#FF7857",
+    "#FFAE57",
+    "#FFC466",
+    "#FFDE85",
+    "#FFF4B8",
+    "#FAFFC2")
+```
 
 
 ```{r}
 more_games<-user_summarise%>%filter(number_games>=6)
 less_games<-user_summarise%>%filter(number_games<6)
+rangesM<-sort(unique(user_summarise$ranges))
+names(colors)=levels(rangesM)
 
-less_games%>% 
-  mutate(ranges=cut(count,10))%>%
+less_games_moves<-less_games%>% 
   group_by(ranges) %>%
   summarise(total= n()) %>%
   ggplot( aes(x = 2, y = total, fill =ranges)) +
   geom_bar(stat = "identity", color = "white") +
+   ggtitle('less than 6 games')+
   coord_polar("y",start=0)+
-  xlim(0.5, 2.5)
+  xlim(0.5, 2.5)+
+  theme_void()+
+  scale_fill_manual(values = colors)
+
+more_games_moves<-more_games%>% 
+  group_by(ranges) %>%
+  summarise(total= n()) %>%
+  ggplot( aes(x = 2, y = total, fill = ranges)) +
+  geom_bar(stat = "identity", color = "white") +
+  ggtitle('6 or more games')+
+  coord_polar("y",start=0)+
+  xlim(0.5, 2.5)+
+  theme_void()+
+  scale_fill_manual(values = colors)+
+  theme(legend.position = "none")
+grid.arrange(more_games_moves,less_games_moves,nrow=1, ncol=2)
+
 ```
 
 ```{r}
@@ -129,15 +198,50 @@ full_table%>%
   geom_bin_2d()
 
 ```
+
 ```{r}
+emojis =sort(unique(full_table$emoji1))
+emojisId=1:length(emojis)
+names(emojisId)=emojis
+full_table$m1=emojisId[full_table$emoji1]
+full_table$m2=emojisId[full_table$emoji2]
+full_table%>%
+ ggplot(aes(m1,m2))+geom_point()
+n<-full_table%>%select(emoji1,emoji2)
+l<-xtabs( ~ emoji1+emoji2, data=n)
+l
+plot(hclust(dist(l,method = 'euclidean')))
+plot(hclust(dist(l,method = 'maximum')))
+plot(hclust(dist(l,method = 'canberra')))
+plot(hclust(dist(l,method = 'manhattan')))
+
+m= cor(full_table$m1,full_table$m2)
+round(m,2)
 full_table%>%
  ggplot(aes(emoji1,emoji2))+
   geom_bin_2d()+scale_fill_distiller(palette = "Spectral")
+
 full_table %>%
   group_by(emoji1,emoji2)%>%
   summarise(count=n())
+
+full_table %>%
+  group_by(m1,m2)%>%
+  summarise(count=n())
+full_table%>%
+      group_by(m2,m1)%>%
+      summarise(n=n_distinct())
+dist_mat <- dist(full_table%>%
+                   group_by(m1,m2)%>%
+                   summarise(n=n()),
+                 method = 'euclidean')
+hclust_avg<-hclust(dist_mat, method = 'average')
+plot(hclust_avg)
+rect.hclust(hclust_avg , k = 3, border = 2:6)
+abline(h = 3, col = 'red')
 ```
 ```{r}
+
 
 ```
 
@@ -150,8 +254,9 @@ gian<-more_games%>%filter(email=='gperfects02@gmail.com')%>%
                      %>%filter(email=='gperfects02@gmail.com'))) %>%
   select(id, everything())
 gian %>% 
-  ggplot(aes(x = start_game, y=score)) + 
-  geom_line() 
+  ggplot(aes(x = start_game, y=score, fill="blue")) + 
+  geom_line()+
+   geom_smooth(method = "loess")
 gian_mod <- lm(score ~ id, data = gian)
 gian_mod2 <- lm(score ~ log(id), data = gian)
 summary(gian_mod)
