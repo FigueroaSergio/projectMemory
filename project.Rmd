@@ -74,8 +74,13 @@ user_summarise <- full_table %>%
               score=mean(match), 
               start_game=first(start), 
               end_game=last(end), 
-              firstEmoji=first(emoji1), 
-              lastEmoji=last(emoji2)) %>% 
+              firstEmoji=first(emoji1),
+              secondEmoji=nth(emoji1,2),
+              thirdEmoji=nth(emoji1,3),
+              last2Emoji=nth(emoji1,-3),
+              last1Emoji=nth(emoji1,-2),
+              lastEmoji=last(emoji1)
+              ) %>% 
               arrange(-count)
 ```
 ```{r}
@@ -328,15 +333,23 @@ less_games<-less_games%>%mutate(wday = wday(start_game, label = TRUE))
 ggplot(less_games, aes(wday, count)) + 
   geom_boxplot()
 
-ggplot(rita, aes(wday, count)) + 
-  geom_boxplot()
-ggplot(gian, aes(wday, count)) + 
-  geom_boxplot()
+
 ```
 ```{r}
-ggplot(filter(rita, ! (wday %in% c("sab", "dom",'mer'))), aes(start_game, score)) + 
+
+rita%>%mutate(wday = wday(start_game, label = TRUE))%>%ggplot( aes(wday, count)) + 
+  geom_boxplot()
+gian%>%mutate(wday = wday(start_game, label = TRUE))%>%ggplot( aes(wday, count)) + 
+  geom_boxplot()
+rita%>%mutate(wday = wday(start_game, label = TRUE))%>%
+  filter(!wday %in% c( "mar"))%>%ggplot( aes(start_game, score)) + 
   geom_line() +
   geom_smooth(se = FALSE, span = 0.20)
+gian%>%mutate(wday = wday(start_game, label = TRUE))%>%
+  filter(!wday %in% c( "ven"))%>%ggplot( aes(start_game, score)) + 
+  geom_line() +
+  geom_smooth(se = FALSE, span = 0.20)
+
 ```
 
 
@@ -355,18 +368,44 @@ by_game<-full_table%>%group_by(email,game)%>%nest()
 
 full_table %>%
   arrange(start)%>%
-  filter(game=="6267d060afe2b9dff26e8987") %>%
-  mutate(time = as.numeric(end-start) ,id=1:25)%>%
+  filter(game=="62716004a67e5db825954b77") %>%
+  mutate(time = as.numeric(end-start) ,
+         id=1:nrow(full_table %>%
+    filter(game=="62716004a67e5db825954b77")))%>%
+  ggplot(aes(start,id))+  
+  geom_point()+
+  geom_segment(aes(xend =end , yend = id)) 
+full_table %>%
+  arrange(start)%>%
+  filter(game=="62716168a67e5db825954be9") %>%
+  mutate(time = as.numeric(end-start) ,
+         id=1:nrow(full_table %>%
+    filter(game=="62716168a67e5db825954be9")))%>%
+  ggplot(aes(start,id))+  
+  geom_point()+
+  geom_segment(aes(xend =end , yend = id)) 
+full_table%>%group_by(game)%>%
+  mutate(id=row_number(),time = as.numeric(end-start))%>%filter(game %in% less_games$game)%>%
   ggplot()+
   geom_point(aes(id,time))
 full_table%>%group_by(game)%>%
   mutate(id=row_number(),time = as.numeric(end-start))%>%
-  ggplot()+
-  geom_point(aes(id,time))
-full_table%>%group_by(game)%>%
-  mutate(id=row_number(),time = as.numeric(end-start))%>%
+  filter(game %in% less_games$game)%>%
   ggplot(aes(id,time))+  
   geom_line(aes(group = email, color=email), alpha = 1/3) 
 ```
 
+```{r}
+full_table %>%
+  arrange(start)%>%
+  filter(game=="62716168a67e5db825954be9") %>%
+  mutate(time = as.numeric(end-start) ,
+         id=1:nrow(full_table %>%
+    filter(game=="62716168a67e5db825954be9")))%>%
+  ggplot(aes(id,time))+  
+  geom_point()
+user_summarise%>%mutate(time_game= end_game-start_game)%>%
+  ggplot(aes(time_game,score, color=email))+
+  geom_point()
+```
 
