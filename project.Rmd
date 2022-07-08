@@ -13,6 +13,11 @@ library(modelr)
 library(corrplot)
 library(cluster)
 library(gridExtra)
+library(igraph)
+library(lubridate)
+#install.packages('igraph')
+#install.packages('ggraph')
+#install.packages('lubridate')
 ```
 # Questions
 - What is the average response time by gender and by age ?
@@ -54,6 +59,8 @@ separateList <- function(df,column, names){
   separateList('card2',c('x2','y2','emoji2')) %>%
   inner_join(games, by=c("game"="_id"))%>%
   inner_join(user,by=c("user"="_id"))
+full_table$id=NULL
+
 ```
 
 
@@ -83,6 +90,7 @@ ggplot(data=user_summarise, mapping = aes(x = start_game, y=score, color=email))
 ```{r}
 ggplot(data=full_table) +
   geom_bar(mapping = aes(x = sex, fill = match))
+full_table%>%group_by(game,sex)%>%summarise(moves=n())%>%group_by(sex)%>%summarise(n())
 ```
 ```{r}
 colors1=c( "#5F00AD",
@@ -201,45 +209,37 @@ full_table%>%
 
 ```{r}
 emojis =sort(unique(full_table$emoji1))
-emojisId=1:length(emojis)
-names(emojisId)=emojis
-full_table$m1=emojisId[full_table$emoji1]
-full_table$m2=emojisId[full_table$emoji2]
-full_table%>%
- ggplot(aes(m1,m2))+geom_point()
+
+
+
 n<-full_table%>%select(emoji1,emoji2)
 l<-xtabs( ~ emoji1+emoji2, data=n)
-l
-plot(hclust(dist(l,method = 'euclidean')))
-plot(hclust(dist(l,method = 'maximum')))
-plot(hclust(dist(l,method = 'canberra')))
-plot(hclust(dist(l,method = 'manhattan')))
 
-m= cor(full_table$m1,full_table$m2)
-round(m,2)
+plot(hclust(dist(l,method = 'euclidean')))
+
 full_table%>%
  ggplot(aes(emoji1,emoji2))+
   geom_bin_2d()+scale_fill_distiller(palette = "Spectral")
-
-full_table %>%
-  group_by(emoji1,emoji2)%>%
-  summarise(count=n())
-
-full_table %>%
-  group_by(m1,m2)%>%
-  summarise(count=n())
-full_table%>%
-      group_by(m2,m1)%>%
-      summarise(n=n_distinct())
-dist_mat <- dist(full_table%>%
-                   group_by(m1,m2)%>%
-                   summarise(n=n()),
-                 method = 'euclidean')
-hclust_avg<-hclust(dist_mat, method = 'average')
-plot(hclust_avg)
-rect.hclust(hclust_avg , k = 3, border = 2:6)
-abline(h = 3, col = 'red')
 ```
+
+```{r}
+emojis =sort(unique(full_table$emoji1))
+emojisId=1:length(emojis)
+names(emojisId)=emojis
+
+n<-full_table%>%filter(sex=="male")%>%select(emoji1,emoji2)
+l<-xtabs( ~ emoji1+emoji2, data=n)
+l
+plot(hclust(dist(l,method = 'euclidean')),main= "male")
+
+n<-full_table%>%filter(sex=="female")%>%select(emoji1,emoji2)
+l<-xtabs( ~ emoji1+emoji2, data=n)
+
+plot(hclust(dist(l,method = 'euclidean')), main= "female")
+
+
+```
+
 ```{r}
 
 
@@ -254,21 +254,32 @@ gian<-more_games%>%filter(email=='gperfects02@gmail.com')%>%
                      %>%filter(email=='gperfects02@gmail.com'))) %>%
   select(id, everything())
 gian %>% 
-  ggplot(aes(x = start_game, y=score, fill="blue")) + 
+  ggplot(aes(x = id, y=score, fill="blue")) + 
   geom_line()+
    geom_smooth(method = "loess")
-gian_mod <- lm(score ~ id, data = gian)
-gian_mod2 <- lm(score ~ log(id), data = gian)
-summary(gian_mod)
-summary(gian_mod2)
+gian %>% 
+  ggplot(aes(x = mean, y=score, fill="blue")) + 
+  geom_line()+
+   geom_smooth(method = "loess")
+gian %>% 
+  ggplot(aes(x = start_game, y=mean, fill="blue")) + 
+  geom_line()+
+   geom_smooth(method = "loess")
+
 gian%>% 
   add_predictions(gian_mod2)%>%
   ggplot(aes(x = id, y=score))+
   geom_point()+
   geom_abline(intercept = gian_mod$coefficients[1], 
               slope = gian_mod$coefficients[2], 
-              color = "red")+
+               color = "red")+
    geom_line(aes(id,pred))
+cor(as.numeric(gian$mean),gian$score)
+cor(as.numeric(gian$start_game),gian$score)
+gian_mod <- lm(score ~ id, data = gian)
+gian_mod2 <- lm(score ~ log(id), data = gian)
+summary(gian_mod)
+summary(gian_mod2)
 ```
 
 
@@ -281,6 +292,14 @@ rita<-more_games%>%filter(email=='ritamorocutti@gmail.com')%>%
 rita %>% 
   ggplot(aes(x = start_game, y=score)) + 
   geom_line() 
+rita %>% 
+  ggplot(aes(x = mean, y=score, fill="blue")) + 
+  geom_line()+
+   geom_smooth(method = "loess")
+rita %>% 
+  ggplot(aes(x = start_game, y=mean, fill="blue")) + 
+  geom_line()+
+   geom_smooth(method = "loess")
 rita_mod <- lm(score ~ id, data = rita)
 rita_mod2 <- lm(score ~ log(id), data = rita)
 summary(rita_mod)
@@ -295,5 +314,59 @@ rita %>%  add_predictions(rita_mod2)%>%
 ```
 
 
-In the last two graphs we can observe there is an interesting pattern, periodic increase and decrease in the score. Also we can observe there are some days when the score is bigger so should we should  try to discover if there is and special day of the weekend  
+In the last two graphs we can observe there is an interesting pattern, periodic increase and decrease in the score. Also we can observe there are some days when the score is bigger so should we should  try to discover if there is and special day of the weekend 
+
+```{r}
+more_games<-more_games%>%mutate(wday = wday(start_game, label = TRUE))
+ggplot(more_games, aes(wday, count)) + 
+  geom_boxplot()
+
+ggplot(more_games, aes(wday,as.numeric(mean))) + 
+  geom_boxplot()
+
+less_games<-less_games%>%mutate(wday = wday(start_game, label = TRUE))
+ggplot(less_games, aes(wday, count)) + 
+  geom_boxplot()
+
+ggplot(rita, aes(wday, count)) + 
+  geom_boxplot()
+ggplot(gian, aes(wday, count)) + 
+  geom_boxplot()
+```
+```{r}
+ggplot(filter(rita, ! (wday %in% c("sab", "dom",'mer'))), aes(start_game, score)) + 
+  geom_line() +
+  geom_smooth(se = FALSE, span = 0.20)
+```
+
+
+Watching for a long time we can observer some interesting details seems there is break point where the score stops and remain almost the same in range
+
+
+There is a relationship between the emojis of in the game and the score?
+```{r}
+ggplot(more_games, aes( score)) +
+    geom_bar() +
+    theme_classic()
+ggplot(less_games,aes (score)) +
+    geom_bar() +
+  theme_classic()
+by_game<-full_table%>%group_by(email,game)%>%nest()
+
+full_table %>%
+  arrange(start)%>%
+  filter(game=="6267d060afe2b9dff26e8987") %>%
+  mutate(time = as.numeric(end-start) ,id=1:25)%>%
+  ggplot()+
+  geom_point(aes(id,time))
+full_table%>%group_by(game)%>%
+  mutate(id=row_number(),time = as.numeric(end-start))%>%
+  ggplot()+
+  geom_point(aes(id,time))
+full_table%>%group_by(game)%>%
+  mutate(id=row_number(),time = as.numeric(end-start))%>%
+  ggplot(aes(id,time))+  
+  geom_line(aes(group = email, color=email), alpha = 1/3) 
+```
+
 
