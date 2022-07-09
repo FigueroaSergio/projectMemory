@@ -1,9 +1,14 @@
 ---
 title: "Memory analysis"
-output: html_notebook
+output:
+  html_notebook:
+    css: style.css
+  html_document:
+    df_print: paged
+    css: style.css
 ---
 # Libraries
-```{r include=FALSE}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 library(tidyr)
 library(readr)
 library(ggplot2)
@@ -12,13 +17,46 @@ library(mongolite)
 library(modelr)
 library(corrplot)
 library(cluster)
-library(gridExtra)
 library(igraph)
 library(lubridate)
-#install.packages('igraph')
-#install.packages('ggraph')
-#install.packages('lubridate')
+library(cowplot)
 ```
+
+```{r include=FALSE}
+mytheme<-theme(panel.background = element_rect(fill = "#0c1329",colour = NA_character_),# necessary to avoid drawing panel outline
+         plot.background = element_rect(fill = "#0c1329",,colour = NA_character_),
+         legend.text = element_text(colour = "white"),
+         legend.title = element_text(face = "bold", colour = "white"),
+         legend.box.background = element_rect(fill = "#0c1329", color= "#0c1329")) 
+themeBars<- theme( axis.text=element_text(colour = "white"),
+         panel.grid.major = element_line(colour = "white"),
+         panel.grid.minor = element_line(colour = "white"))
+colors=c( "#5F00AD",
+    "#7700B8",
+    "#7E00C2",
+    "#7D00B8",
+    "#8700B8",
+    "#9900B8",
+    "#9A00A8",
+    "#A30096",
+    "#A8007B",
+    "#B30071",
+    "#B30056",
+    "#A80051",
+    "#C20067",
+    "#CC0074",
+    "#FF05A8",
+    "#FF2E8C",
+    "#FF584D",
+    "#FF7857",
+    "#FFAE57",
+    "#FFC466",
+    "#FFDE85",
+    "#FFF4B8",
+    "#FAFFC2")
+colorSex=c("#FF7857","#5F00AD")
+```
+
 # Questions
 - What is the average response time by gender and by age ?
 - What is the  average moves require to open the 12 pairs of cards?
@@ -54,6 +92,7 @@ separateList <- function(df,column, names){
 
 
 ```{r}
+
  full_table<-moves %>% mutate(id = 1:nrow(moves)) %>% 
   separateList('card1',c('x1','y1','emoji1')) %>%   
   separateList('card2',c('x2','y2','emoji2')) %>%
@@ -64,7 +103,7 @@ full_table$id=NULL
 ```
 
 
-```{r}
+```{r echo=TRUE, message=FALSE, warning=FALSE}
 user_summarise <- full_table %>%
     arrange(start) %>% 
     group_by(game, email, sex ) %>% 
@@ -80,56 +119,39 @@ user_summarise <- full_table %>%
               last2Emoji=nth(emoji1,-3),
               last1Emoji=nth(emoji1,-2),
               lastEmoji=last(emoji1)
-              ) %>% 
+              , .groups = 'drop') %>% 
               arrange(-count)
+user_summarise
 ```
 ```{r}
 ggplot(data=user_summarise)+
-  geom_bar(mapping = aes(x = email, fill = sex))
+  geom_bar(mapping = aes(x = email, fill = sex))+
+  theme_void()+
+  scale_fill_manual(values=colorSex)+
+  mytheme+
+  themeBars+
+  theme(axis.text.x=element_blank())
 ```
 
 ```{r}
 ggplot(data=user_summarise, mapping = aes(x = start_game, y=score, color=email))+
-  geom_point()
+  geom_point(size=3)+theme_void()+mytheme+themeBars
 ```
 ```{r}
 ggplot(data=full_table) +
-  geom_bar(mapping = aes(x = sex, fill = match))
-full_table%>%group_by(game,sex)%>%summarise(moves=n())%>%group_by(sex)%>%summarise(n())
+  geom_bar(mapping = aes(x = sex, fill = match))+theme_void()+mytheme+themeBars+scale_fill_manual(values=colorSex)
+full_table%>%group_by(game,sex)%>%summarise(moves=n() ,.groups = 'drop')%>%group_by(sex)%>%summarise(n(),.groups = 'drop')
 ```
 ```{r}
-colors1=c( "#5F00AD",
-    "#7700B8",
-    "#7E00C2",
-    "#7D00B8",
-    "#8700B8",
-    "#9900B8",
-    "#9A00A8",
-    "#A30096",
-    "#A8007B",
-    "#B30071",
-    "#B30056",
-    "#A80051",
-    "#C20067",
-    "#CC0074",
-    "#FF05A8",
-    "#FF2E8C",
-    "#FF584D",
-    "#FF7857",
-    "#FFAE57",
-    "#FFC466",
-    "#FFDE85",
-    "#FFF4B8",
-    "#FAFFC2")
 user_summarise%>%
   arrange(firstEmoji)%>%
     ggplot() + geom_bar(mapping = aes(x = firstEmoji,fill=firstEmoji))+
-  scale_fill_manual(values = colors1)
+  scale_fill_manual(values = colors)+theme_void()+mytheme+themeBars
 user_summarise%>%
   arrange(firstEmoji)%>%
   ggplot()+
     geom_bar(mapping = aes(x = lastEmoji,fill=lastEmoji))+
-  scale_fill_manual(values = colors1)
+  scale_fill_manual(values = colors)+theme_void()+mytheme+themeBars
 
 ```
 
@@ -143,88 +165,102 @@ user_summarise <- user_summarise %>%
   mutate(ranges=cut(count,seq(8, 48, 4)))
 ```
 
-```{r}
-colors=c( "#5F00AD",
-    "#7700B8",
-    "#7E00C2",
-    "#7D00B8",
-    "#8700B8",
-    "#9900B8",
-    "#9A00A8",
-    "#A30096",
-    "#A8007B",
-    "#B30071",
-    "#B30056",
-    "#A80051",
-    "#C20067",
-    "#CC0074",
-    "#FF05A8",
-    "#FF2E8C",
-    "#FF584D",
-    "#FF7857",
-    "#FFAE57",
-    "#FFC466",
-    "#FFDE85",
-    "#FFF4B8",
-    "#FAFFC2")
-```
 
 
 ```{r}
 more_games<-user_summarise%>%filter(number_games>=6)
 less_games<-user_summarise%>%filter(number_games<6)
 rangesM<-sort(unique(user_summarise$ranges))
-names(colors)=levels(rangesM)
-
-less_games_moves<-less_games%>% 
+colorsRanges=rev(colors)
+names(colorsRanges)=levels(rangesM)
+more_games_percentage<-more_games%>% 
   group_by(ranges) %>%
-  summarise(total= n()) %>%
-  ggplot( aes(x = 2, y = total, fill =ranges)) +
-  geom_bar(stat = "identity", color = "white") +
-   ggtitle('less than 6 games')+
-  coord_polar("y",start=0)+
-  xlim(0.5, 2.5)+
-  theme_void()+
-  scale_fill_manual(values = colors)
+  summarise(total= n()) %>% # Compute total
+  mutate(fraction = total/sum(total), # Compute percentages
+         ymax=cumsum(fraction)) # Compute the cumulative percentages (top of each rectangle)
+more_games_percentage<-more_games_percentage%>%
+  mutate(
+    ymin=c(0,head(more_games_percentage$fraction,n=-1)))%>% # Compute the bottom of each rectangle
+  mutate(
+    labePosition=(ymax+ymin)/2, # Compute label position
+    label=ifelse(fraction>0.2,paste0(ranges," \n value: ",round(fraction*100), '%'),'') # Compute label only for percentage grater than 20%
+    )
+# Creation graph
+more_games_percentage<-more_games_percentage%>%arrange(fraction)
+ more_games_moves<-ggplot(more_games_percentage, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=ranges)) +
+  geom_rect(color='white') +
+  coord_polar(theta="y") +
+  geom_text(
+            aes(x=1 ,
+                y=labePosition, 
+                label=label, 
+                color=ranges), 
+            size=4)+  #
+  xlim(c(-1, 4)) +
+  theme_void() +
+  scale_fill_manual(values = colorsRanges)+
+  scale_color_manual(values = colorsRanges)+
+  theme(legend.position = "none")+mytheme
+ 
 
-more_games_moves<-more_games%>% 
+less_games_percentage<-less_games%>% 
   group_by(ranges) %>%
-  summarise(total= n()) %>%
-  ggplot( aes(x = 2, y = total, fill = ranges)) +
-  geom_bar(stat = "identity", color = "white") +
-  ggtitle('6 or more games')+
-  coord_polar("y",start=0)+
-  xlim(0.5, 2.5)+
-  theme_void()+
-  scale_fill_manual(values = colors)+
-  theme(legend.position = "none")
-grid.arrange(more_games_moves,less_games_moves,nrow=1, ncol=2)
+  summarise(total= n()) %>% 
+  mutate(fraction = total/sum(total),
+         ymax=cumsum(fraction))
+less_games_percentage<-less_games_percentage%>%
+  mutate(
+    ymin=c(0,head(less_games_percentage$fraction,n=-1)))%>%
+  mutate(
+    labePosition=(ymax+ymin)/2,
+    label=ifelse(fraction>0.2,paste0(ranges," \n value: ",round(fraction*100), '%'),'') 
+    )
+
+less_games_percentage<-less_games_percentage%>%arrange(fraction)
+ less_games_moves<-ggplot(less_games_percentage, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=ranges)) +
+  geom_rect(color='white') +
+  coord_polar(theta="y") +
+  geom_text(
+            aes(x=1 ,
+                y=labePosition, 
+                label=label, 
+                color=ranges), 
+            size=4)+  #
+  xlim(c(-1, 4)) +
+  theme_void() +
+  scale_fill_manual(values = colorsRanges)+
+  scale_color_manual(values = colorsRanges)+mytheme
+
+
+plot_grid(more_games_moves,less_games_moves,nrow=1, ncol=2) + 
+  theme(plot.background = element_rect(fill="#0c1329", color = NA))
 
 ```
 
 ```{r}
 full_table%>%
   ggplot(aes(x1,y1))+
-  geom_bin_2d()
-full_table%>%
-  ggplot(aes(x2,y2))+
-  geom_bin_2d()
-
+  geom_bin_2d()+ 
+  scale_fill_distiller(palette = "RdPu")+
+  theme_void()+mytheme
 ```
 
 ```{r}
+full_table%>%
+ ggplot(aes(emoji1,emoji2))+
+  geom_bin_2d()+scale_fill_distiller(palette = "RdPu")+mytheme+themeBars
+
 emojis =sort(unique(full_table$emoji1))
 
 
 
 n<-full_table%>%select(emoji1,emoji2)
+
 l<-xtabs( ~ emoji1+emoji2, data=n)
 
 plot(hclust(dist(l,method = 'euclidean')))
 
-full_table%>%
- ggplot(aes(emoji1,emoji2))+
-  geom_bin_2d()+scale_fill_distiller(palette = "Spectral")
+
 ```
 
 ```{r}
@@ -266,6 +302,12 @@ gian %>%
   ggplot(aes(x = mean, y=score, fill="blue")) + 
   geom_line()+
    geom_smooth(method = "loess")
+cor(as.numeric(gian$mean),gian$score)
+cor(as.numeric(gian$start_game),gian$score)
+gian_mod <- lm(score ~ id, data = gian)
+gian_mod2 <- lm(score ~ log(id), data = gian)
+summary(gian_mod)
+summary(gian_mod2)
 gian %>% 
   ggplot(aes(x = start_game, y=mean, fill="blue")) + 
   geom_line()+
@@ -279,12 +321,7 @@ gian%>%
               slope = gian_mod$coefficients[2], 
                color = "red")+
    geom_line(aes(id,pred))
-cor(as.numeric(gian$mean),gian$score)
-cor(as.numeric(gian$start_game),gian$score)
-gian_mod <- lm(score ~ id, data = gian)
-gian_mod2 <- lm(score ~ log(id), data = gian)
-summary(gian_mod)
-summary(gian_mod2)
+
 ```
 
 

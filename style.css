@@ -1,0 +1,47 @@
+body {
+  background: #0c1329;
+  color: white;
+  font-family: sans-serif;
+}
+li,
+p {
+  font-size: 1.2em;
+}
+h1,
+h2,
+h3,
+h4 {
+  color: orangered;
+}
+
+pre {
+  background-color: #151d3a;
+  border: 1px solid orangered;
+  color: white;
+  border-radius: 4px;
+}
+pre span.hljs-string {
+  color: #ffae11;
+}
+pre span.hljs-number {
+  color: #ff2e8c;
+}
+pre span.hljs-keyword {
+  color: #0077cc;
+}
+button.btn {
+  background: #0c1329;
+  color: #9fa6ad;
+  font-weight: 600;
+  border: 1px solid #9fa6ad;
+  border-radius: 8px;
+  padding: 1px 8px;
+}
+button.btn:hover{
+    background: white;
+    color: #5e5e5f;
+    font-weight: 600;
+    border: 1px solid white;
+    border-radius: 8px;
+    padding: 1px 8px;
+  }
