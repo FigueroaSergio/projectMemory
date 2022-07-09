@@ -248,7 +248,7 @@ full_table%>%
 ```{r}
 full_table%>%
  ggplot(aes(emoji1,emoji2))+
-  geom_bin_2d()+scale_fill_distiller(palette = "RdPu")+mytheme+themeBars
+  geom_bin_2d()+scale_fill_distiller(palette = "RdPu")+theme_void()+mytheme+themeBars
 
 emojis =sort(unique(full_table$emoji1))
 
@@ -263,27 +263,10 @@ plot(hclust(dist(l,method = 'euclidean')))
 
 ```
 
-```{r}
+```{r include=FALSE}
 emojis =sort(unique(full_table$emoji1))
 emojisId=1:length(emojis)
 names(emojisId)=emojis
-
-n<-full_table%>%filter(sex=="male")%>%select(emoji1,emoji2)
-l<-xtabs( ~ emoji1+emoji2, data=n)
-l
-plot(hclust(dist(l,method = 'euclidean')),main= "male")
-
-n<-full_table%>%filter(sex=="female")%>%select(emoji1,emoji2)
-l<-xtabs( ~ emoji1+emoji2, data=n)
-
-plot(hclust(dist(l,method = 'euclidean')), main= "female")
-
-
-```
-
-```{r}
-
-
 ```
 
 
@@ -361,16 +344,9 @@ In the last two graphs we can observe there is an interesting pattern, periodic 
 ```{r}
 more_games<-more_games%>%mutate(wday = wday(start_game, label = TRUE))
 ggplot(more_games, aes(wday, count)) + 
-  geom_boxplot()
-
-ggplot(more_games, aes(wday,as.numeric(mean))) + 
-  geom_boxplot()
-
-less_games<-less_games%>%mutate(wday = wday(start_game, label = TRUE))
-ggplot(less_games, aes(wday, count)) + 
-  geom_boxplot()
-
-
+  geom_boxplot(fill = "#FF2E8C", colour = "white")+
+  themeBars+
+  mytheme
 ```
 ```{r}
 
