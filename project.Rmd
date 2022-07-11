@@ -23,10 +23,12 @@ library(cowplot)
 ```
 
 ```{r include=FALSE}
-mytheme<-theme(panel.background = element_rect(fill = "#0c1329",colour = NA_character_),# necessary to avoid drawing panel outline
+mytheme<-theme_void()+
+        theme(panel.background = element_rect(fill = "#0c1329",colour = NA_character_),# necessary to avoid drawing panel outline
          plot.background = element_rect(fill = "#0c1329",,colour = NA_character_),
          legend.text = element_text(colour = "white"),
          legend.title = element_text(face = "bold", colour = "white"),
+         plot.title = element_text(face = "bold", colour = "white"),
          legend.box.background = element_rect(fill = "#0c1329", color= "#0c1329")) 
 themeBars<- theme( axis.text=element_text(colour = "white"),
          panel.grid.major = element_line(colour = "white"),
@@ -55,6 +57,7 @@ colors=c( "#5F00AD",
     "#FFF4B8",
     "#FAFFC2")
 colorSex=c("#FF7857","#5F00AD")
+pink= "#FF2E8C"
 ```
 
 # Questions
@@ -65,8 +68,12 @@ colorSex=c("#FF7857","#5F00AD")
 - There is a improvement in the  persons how play the game many time?
 
 # Exporting Data
-```{r}
+```{r include=FALSE}
 urldb='mongodb+srv://admin:AvrilFG123@mystore.96rrl.mongodb.net/game-memory?retryWrites=true&w=majority'
+```
+
+```{r}
+
 connectionGames = mongo(collection="games", url=urldb)
 connectionUsers = mongo(collection="users", url=urldb)
 connectionMoves = mongo(collection="moves", url=urldb)
@@ -91,13 +98,13 @@ separateList <- function(df,column, names){
 
 
 
-```{r}
+```{r result=FALSE}
 
  full_table<-moves %>% mutate(id = 1:nrow(moves)) %>% 
   separateList('card1',c('x1','y1','emoji1')) %>%   
   separateList('card2',c('x2','y2','emoji2')) %>%
   inner_join(games, by=c("game"="_id"))%>%
-  inner_join(user,by=c("user"="_id"))
+  left_join(user,by=c("user"="_id"))
 full_table$id=NULL
 
 ```
@@ -106,7 +113,7 @@ full_table$id=NULL
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 user_summarise <- full_table %>%
     arrange(start) %>% 
-    group_by(game, email, sex ) %>% 
+    group_by(game, user, sex ) %>% 
     mutate(time=end-start) %>%
     summarise(count = n(),
               mean = mean(time), 
@@ -125,7 +132,7 @@ user_summarise
 ```
 ```{r}
 ggplot(data=user_summarise)+
-  geom_bar(mapping = aes(x = email, fill = sex))+
+  geom_bar(mapping = aes(x = user, fill = sex))+
   theme_void()+
   scale_fill_manual(values=colorSex)+
   mytheme+
@@ -134,7 +141,7 @@ ggplot(data=user_summarise)+
 ```
 
 ```{r}
-ggplot(data=user_summarise, mapping = aes(x = start_game, y=score, color=email))+
+ggplot(data=user_summarise, mapping = aes(x = start_game, y=score, color=user))+
   geom_point(size=3)+theme_void()+mytheme+themeBars
 ```
 ```{r}
@@ -159,17 +166,17 @@ user_summarise%>%
 
 ```{r}
 user_summarise <- user_summarise %>% 
-  group_by(email) %>%
+  group_by(user) %>%
   summarise(number_games=n())%>%
-  inner_join(user_summarise,by=c('email'='email'))%>%
+  inner_join(user_summarise,by=c('user'='user'))%>%
   mutate(ranges=cut(count,seq(8, 48, 4)))
 ```
 
 
 
 ```{r}
-more_games<-user_summarise%>%filter(number_games>=6)
-less_games<-user_summarise%>%filter(number_games<6)
+more_games<-user_summarise%>%filter(number_games>=4)
+less_games<-user_summarise%>%filter(number_games<4)
 rangesM<-sort(unique(user_summarise$ranges))
 colorsRanges=rev(colors)
 names(colorsRanges)=levels(rangesM)
@@ -234,7 +241,12 @@ less_games_percentage<-less_games_percentage%>%arrange(fraction)
 
 plot_grid(more_games_moves,less_games_moves,nrow=1, ncol=2) + 
   theme(plot.background = element_rect(fill="#0c1329", color = NA))
-
+user_summarise%>%
+  group_by(user,number_games)%>%
+  summarise(mean_score=mean(score))%>%
+  arrange(number_games)%>%
+  ggplot(aes(number_games,mean_score))+
+  geom_point()
 ```
 
 ```{r}
@@ -249,16 +261,29 @@ full_table%>%
 full_table%>%
  ggplot(aes(emoji1,emoji2))+
   geom_bin_2d()+scale_fill_distiller(palette = "RdPu")+theme_void()+mytheme+themeBars
-
+full_table%>%filter(!game%in% more_games$game)%>%select(emoji1,emoji2)%>%
+ ggplot(aes(emoji1,emoji2))+
+  geom_bin_2d()+scale_fill_distiller(palette = "RdPu")+theme_void()+mytheme+themeBars
 emojis =sort(unique(full_table$emoji1))
 
 
+full_table%>%group_by(emoji1,emoji2)%>%summarise(count=n())%>%filter(emoji1==emoji2)
 
 n<-full_table%>%select(emoji1,emoji2)
 
 l<-xtabs( ~ emoji1+emoji2, data=n)
 
 plot(hclust(dist(l,method = 'euclidean')))
+
+
+
+n<-full_table%>%filter(!game%in% more_games$game)%>%select(emoji1,emoji2)
+
+l<-xtabs( ~ emoji1+emoji2, data=n)
+l
+
+plot(hclust(dist(l,method = 'euclidean')))
+
 
 
 ```
@@ -269,13 +294,56 @@ emojisId=1:length(emojis)
 names(emojisId)=emojis
 ```
 
+```{r}
+more_games_2=more_games%>%mutate(duration= as.numeric(end_game-start_game))
+more_games_2%>%
+  ggplot(aes(duration,score))+
+  geom_point()
+cor(as.numeric(more_games_2$duration),more_games_2$score)
 
+mod <- lm(score ~ log(duration), data = more_games_2)
+mod2 <- lm(score ~ exp(duration), data = more_games_2)
+
+mod3 <- lm(duration~score, data = more_games_2)
+
+more_games_2%>% 
+  add_predictions(mod)%>%
+  ggplot(aes(duration,score))+
+  geom_point(color=pink)+
+  geom_line(aes(duration,pred ),color='green')+
+  mytheme+
+  themeBars+
+  ggtitle('Score by Game Duration')
+#
+# less games
+less_games%>%
+  mutate(duration= as.numeric(end_game-start_game),score=score)%>%
+  ggplot(aes(duration,score))+
+  geom_point()
+
+summary(mod)
+summary(mod2)
+summary(mod3)
+```
 
 ```{r}
-gian<-more_games%>%filter(email=='gperfects02@gmail.com')%>%
+user_summarise%>%filter( last1Emoji == lastEmoji | last1Emoji == last2Emoji | last2Emoji == lastEmoji)%>%group_by(user)%>%summarise(n=n())
+```
+
+```{r}
+more_games%>%
+  arrange(start_game)%>%
+  group_by(user)%>%
+  mutate(id_game=row_number())%>%
+  ggplot()+
+  geom_boxplot(aes(id_game,score, group=id_game))
+```
+
+```{r}
+gian<-more_games%>%filter(user=='6267cf94afe2b9dff26e8952')%>%
   arrange(start_game)%>%
   mutate(id = 1:nrow(more_games
-                     %>%filter(email=='gperfects02@gmail.com'))) %>%
+                     %>%filter(user=='6267cf94afe2b9dff26e8952'))) %>%
   select(id, everything())
 gian %>% 
   ggplot(aes(x = id, y=score, fill="blue")) + 
@@ -304,15 +372,14 @@ gian%>%
               slope = gian_mod$coefficients[2], 
                color = "red")+
    geom_line(aes(id,pred))
-
 ```
 
 
 
 ```{r}
-rita<-more_games%>%filter(email=='ritamorocutti@gmail.com')%>%
+rita<-more_games%>%filter(user=='6267d02aafe2b9dff26e8983')%>%
   arrange(start_game)%>%
-  mutate(id = 1:nrow(more_games%>%filter(email=='ritamorocutti@gmail.com'))) %>%
+  mutate(id = 1:nrow(more_games%>%filter(user=='6267d02aafe2b9dff26e8983'))) %>%
   select(id, everything())
 rita %>% 
   ggplot(aes(x = start_game, y=score)) + 
@@ -344,24 +411,43 @@ In the last two graphs we can observe there is an interesting pattern, periodic 
 ```{r}
 more_games<-more_games%>%mutate(wday = wday(start_game, label = TRUE))
 ggplot(more_games, aes(wday, count)) + 
-  geom_boxplot(fill = "#FF2E8C", colour = "white")+
-  themeBars+
-  mytheme
+  geom_boxplot(fill = pink, colour = "white")+
+  ggtitle("Score by week day")+
+  mytheme+
+  themeBars
 ```
 ```{r}
 
-rita%>%mutate(wday = wday(start_game, label = TRUE))%>%ggplot( aes(wday, count)) + 
-  geom_boxplot()
-gian%>%mutate(wday = wday(start_game, label = TRUE))%>%ggplot( aes(wday, count)) + 
-  geom_boxplot()
+rita%>%mutate(wday = wday(start_game, label = TRUE))%>%
+  ggplot( aes(wday, count)) + 
+    geom_boxplot()+ 
+    ggtitle("Score by week day rita")
+gian%>%mutate(wday = wday(start_game, label = TRUE))%>%
+  ggplot( aes(wday, count)) + 
+  geom_boxplot()+ 
+  ggtitle("Score by week day gian")
+
 rita%>%mutate(wday = wday(start_game, label = TRUE))%>%
   filter(!wday %in% c( "mar"))%>%ggplot( aes(start_game, score)) + 
   geom_line() +
   geom_smooth(se = FALSE, span = 0.20)
+
 gian%>%mutate(wday = wday(start_game, label = TRUE))%>%
   filter(!wday %in% c( "ven"))%>%ggplot( aes(start_game, score)) + 
   geom_line() +
   geom_smooth(se = FALSE, span = 0.20)
+gian %>%
+  mutate(wday = hour(start_game))%>%
+  ggplot( aes(wday, score, group=wday)) + 
+    geom_boxplot()+ 
+    ggtitle("Score by hour day gian")
+
+rita %>%
+  mutate(wday = hour(start_game))%>%
+  ggplot( aes(wday, score, group=wday))+ 
+    geom_boxplot()+ 
+    ggtitle("Score by hour day rita")
+
 
 ```
 
@@ -370,24 +456,45 @@ Watching for a long time we can observer some interesting details seems there is
 
 
 There is a relationship between the emojis of in the game and the score?
-```{r}
+```{r }
 ggplot(more_games, aes( score)) +
     geom_bar() +
     theme_classic()
 ggplot(less_games,aes (score)) +
     geom_bar() +
   theme_classic()
-by_game<-full_table%>%group_by(email,game)%>%nest()
+by_game<-full_table%>%group_by(user,game)%>%nest()
 
+# Grafico person play more than 6 times
 full_table %>%
   arrange(start)%>%
-  filter(game=="62716004a67e5db825954b77") %>%
+  filter(game=="62949d54a7d555019e4fbd40") %>%
   mutate(time = as.numeric(end-start) ,
          id=1:nrow(full_table %>%
-    filter(game=="62716004a67e5db825954b77")))%>%
+    filter(game=="62949d54a7d555019e4fbd40")))%>%
   ggplot(aes(start,id))+  
   geom_point()+
   geom_segment(aes(xend =end , yend = id)) 
+full_table %>%
+  arrange(start)%>%
+  filter(game=="62b1a3d548995315b410f15d") %>%
+  mutate(time = as.numeric(end-start) ,
+         id=1:nrow(full_table %>%
+    filter(game=="62b1a3d548995315b410f15d")))%>%
+  ggplot(aes(start,id))+  
+  geom_point()+
+  geom_segment(aes(xend =end , yend = id)) 
+full_table %>%
+  arrange(start)%>%
+  filter(game=="6284d0c08a106117bf6804a7") %>%
+  mutate(time = as.numeric(end-start) ,
+         id=1:nrow(full_table %>%
+    filter(game=="6284d0c08a106117bf6804a7")))%>%
+  ggplot(aes(start,id))+  
+  geom_point()+
+  geom_segment(aes(xend =end , yend = id)) 
+
+# Grafico person play less  than 6 times
 full_table %>%
   arrange(start)%>%
   filter(game=="62716168a67e5db825954be9") %>%
@@ -405,20 +512,11 @@ full_table%>%group_by(game)%>%
   mutate(id=row_number(),time = as.numeric(end-start))%>%
   filter(game %in% less_games$game)%>%
   ggplot(aes(id,time))+  
-  geom_line(aes(group = email, color=email), alpha = 1/3) 
+  geom_line(aes(group = user, color=user), alpha = 1/3) 
+```
+```{r}
+more_games%>%group_by(sex,user)%>% summarise(n=n())%>%group_by(sex)%>%summarise(c=n())
 ```
 
-```{r}
-full_table %>%
-  arrange(start)%>%
-  filter(game=="62716168a67e5db825954be9") %>%
-  mutate(time = as.numeric(end-start) ,
-         id=1:nrow(full_table %>%
-    filter(game=="62716168a67e5db825954be9")))%>%
-  ggplot(aes(id,time))+  
-  geom_point()
-user_summarise%>%mutate(time_game= end_game-start_game)%>%
-  ggplot(aes(time_game,score, color=email))+
-  geom_point()
-```
+
 
