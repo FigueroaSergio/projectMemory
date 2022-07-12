@@ -29,7 +29,8 @@ mytheme<-theme_void()+
          legend.text = element_text(colour = "white"),
          legend.title = element_text(face = "bold", colour = "white"),
          plot.title = element_text(face = "bold", colour = "white"),
-         legend.box.background = element_rect(fill = "#0c1329", color= "#0c1329")) 
+         legend.box.background = element_rect(fill = "#0c1329", color= "#0c1329"),
+          axis.text=element_text(colour = "white")) 
 themeBars<- theme( axis.text=element_text(colour = "white"),
          panel.grid.major = element_line(colour = "white"),
          panel.grid.minor = element_line(colour = "white"))
@@ -150,16 +151,27 @@ ggplot(data=full_table) +
 full_table%>%group_by(game,sex)%>%summarise(moves=n() ,.groups = 'drop')%>%group_by(sex)%>%summarise(n(),.groups = 'drop')
 ```
 ```{r}
-user_summarise%>%
-  arrange(firstEmoji)%>%
-    ggplot() + geom_bar(mapping = aes(x = firstEmoji,fill=firstEmoji))+
-  scale_fill_manual(values = colors)+theme_void()+mytheme+themeBars
-user_summarise%>%
-  arrange(firstEmoji)%>%
-  ggplot()+
-    geom_bar(mapping = aes(x = lastEmoji,fill=lastEmoji))+
-  scale_fill_manual(values = colors)+theme_void()+mytheme+themeBars
-
+first_emoji<-user_summarise%>%
+  group_by(firstEmoji)%>%
+  summarise(count= n())%>%
+  ggplot(aes(x = reorder(firstEmoji,-count),y=count))+
+    geom_bar(stat="identity", mapping=aes( fill=count))+
+  scale_fill_distiller(palette = "RdPu" )+
+  mytheme+
+  themeBars+
+  ggtitle('First open emoji')+ theme(legend.position = "none")
+last_emoji<-user_summarise%>%
+  group_by(lastEmoji)%>%
+  summarise(count= n())%>%
+  ggplot(aes(x = reorder(lastEmoji,-count),y=count))+
+    geom_bar(stat="identity", mapping=aes(fill=count))+
+  scale_fill_distiller(palette = "RdPu" )+
+  mytheme+
+  themeBars+
+  ggtitle('Last open emoji')+ 
+  theme(legend.position = "none")
+plot_grid(first_emoji,last_emoji,nrow=1, ncol=2) + 
+  theme(plot.background = element_rect(fill="#0c1329", color = NA))
 ```
 
 
@@ -311,9 +323,13 @@ more_games_2%>%
   ggplot(aes(duration,score))+
   geom_point(color=pink)+
   geom_line(aes(duration,pred ),color='green')+
-  mytheme+
-  themeBars+
-  ggtitle('Score by Game Duration')
+  ggtitle('Score by Game Duration')+
+  xlab('Time (s)')+
+  ylab('Score')+
+   themeBars
+  
+ 
+  
 #
 # less games
 less_games%>%
