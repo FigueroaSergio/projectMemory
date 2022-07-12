@@ -17,7 +17,7 @@ library(mongolite)
 library(modelr)
 library(corrplot)
 library(cluster)
-library(igraph)
+library(ggraph)
 library(lubridate)
 library(cowplot)
 ```
@@ -30,7 +30,8 @@ mytheme<-theme_void()+
          legend.title = element_text(face = "bold", colour = "white"),
          plot.title = element_text(face = "bold", colour = "white"),
          legend.box.background = element_rect(fill = "#0c1329", color= "#0c1329"),
-          axis.text=element_text(colour = "white")) 
+          axis.text=element_text(colour = "white"),
+         axis.title=element_text(colour = "white")) 
 themeBars<- theme( axis.text=element_text(colour = "white"),
          panel.grid.major = element_line(colour = "white"),
          panel.grid.minor = element_line(colour = "white"))
@@ -128,7 +129,10 @@ user_summarise <- full_table %>%
               last1Emoji=nth(emoji1,-2),
               lastEmoji=last(emoji1)
               , .groups = 'drop') %>% 
-              arrange(-count)
+              arrange(-count)%>%
+  group_by(user)%>%
+  mutate(game=row_number(), 
+         duration=end_game-start_game)
 user_summarise
 ```
 ```{r}
@@ -145,11 +149,7 @@ ggplot(data=user_summarise)+
 ggplot(data=user_summarise, mapping = aes(x = start_game, y=score, color=user))+
   geom_point(size=3)+theme_void()+mytheme+themeBars
 ```
-```{r}
-ggplot(data=full_table) +
-  geom_bar(mapping = aes(x = sex, fill = match))+theme_void()+mytheme+themeBars+scale_fill_manual(values=colorSex)
-full_table%>%group_by(game,sex)%>%summarise(moves=n() ,.groups = 'drop')%>%group_by(sex)%>%summarise(n(),.groups = 'drop')
-```
+
 ```{r}
 first_emoji<-user_summarise%>%
   group_by(firstEmoji)%>%
@@ -273,31 +273,45 @@ full_table%>%
 full_table%>%
  ggplot(aes(emoji1,emoji2))+
   geom_bin_2d()+scale_fill_distiller(palette = "RdPu")+theme_void()+mytheme+themeBars
-full_table%>%filter(!game%in% more_games$game)%>%select(emoji1,emoji2)%>%
- ggplot(aes(emoji1,emoji2))+
-  geom_bin_2d()+scale_fill_distiller(palette = "RdPu")+theme_void()+mytheme+themeBars
-emojis =sort(unique(full_table$emoji1))
+
+emo1_emo2<-full_table%>%select(emoji1,emoji2)
+
+matriz_emojis<-xtabs( ~ emoji1+emoji2, data=emo1_emo2)
+plot(hclust(dist(matriz_emojis,method = 'euclidean')))
 
 
-full_table%>%group_by(emoji1,emoji2)%>%summarise(count=n())%>%filter(emoji1==emoji2)
+matriz_emojis<-matriz_emojis+t(matriz_emojis) # taking advantage of  the symmetry  we can add  the transposed to count (1,2) (2,1) as one
 
-n<-full_table%>%select(emoji1,emoji2)
+comp<-matriz_emojis
+diag(comp)<-0
 
-l<-xtabs( ~ emoji1+emoji2, data=n)
+as.data.frame(comp)%>%
+ ggplot(aes(emoji1,emoji2, fill=Freq))+
+  geom_bin_2d()+scale_fill_distiller(palette = "RdPu")+
+  theme_void()+
+  mytheme+
+  themeBars
+matriz_emojis
+matriz_emojis=1/matriz_emojis
+diag(matriz_emojis)<-0
+matriz_emojis[upper.tri(matriz_emojis)] <- 0
 
-plot(hclust(dist(l,method = 'euclidean')))
+distance<-dist(matriz_emojis,method = 'euclidean',diag = TRUE )
+#dist(scale(emo1_emo2))
+#print(distance)
+#print(matriz_emojis)
+plot(hclust(distance))
+plot(hclust(as.dist(matriz_emojis)))
 
-
-
-n<-full_table%>%filter(!game%in% more_games$game)%>%select(emoji1,emoji2)
-
-l<-xtabs( ~ emoji1+emoji2, data=n)
-l
-
-plot(hclust(dist(l,method = 'euclidean')))
-
-
-
+```
+```{r}
+comp= as.data.frame(matriz_emojis)%>%filter(Freq!=0)
+comp%>%graph_from_data_frame()%>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(edge_alpha = Freq), show.legend = FALSE) +
+  geom_node_point(color = "lightblue", size = 5) +
+  geom_node_text(aes(label = name), repel = TRUE) +
+  theme_void()
 ```
 
 ```{r include=FALSE}
@@ -314,9 +328,7 @@ more_games_2%>%
 cor(as.numeric(more_games_2$duration),more_games_2$score)
 
 mod <- lm(score ~ log(duration), data = more_games_2)
-mod2 <- lm(score ~ exp(duration), data = more_games_2)
 
-mod3 <- lm(duration~score, data = more_games_2)
 
 more_games_2%>% 
   add_predictions(mod)%>%
@@ -326,20 +338,13 @@ more_games_2%>%
   ggtitle('Score by Game Duration')+
   xlab('Time (s)')+
   ylab('Score')+
-   themeBars
+  mytheme+
+  themeBars
   
  
   
-#
-# less games
-less_games%>%
-  mutate(duration= as.numeric(end_game-start_game),score=score)%>%
-  ggplot(aes(duration,score))+
-  geom_point()
 
 summary(mod)
-summary(mod2)
-summary(mod3)
 ```
 
 ```{r}
@@ -351,6 +356,7 @@ more_games%>%
   arrange(start_game)%>%
   group_by(user)%>%
   mutate(id_game=row_number())%>%
+  filter(id_game<=10)%>%
   ggplot()+
   geom_boxplot(aes(id_game,score, group=id_game))
 ```
