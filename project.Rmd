@@ -7,6 +7,9 @@ output:
     df_print: paged
     css: style.css
 ---
+## Introduction
+Currently the use of smartphone a electronic devices is 
+
 
 ## Libraries
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
@@ -20,7 +23,8 @@ library(cowplot)
 
 ```{r include=FALSE}
 mytheme<-theme_void()+
-        theme(panel.background = element_rect(fill = "#0c1329",colour = NA_character_),# necessary to avoid drawing panel outline
+        theme(
+          panel.background = element_rect(fill = "#0c1329",colour = NA_character_),# necessary to avoid drawing panel outline
          plot.background = element_rect(fill = "#0c1329",,colour = NA_character_),
          legend.text = element_text(colour = "white"),
          legend.title = element_text(face = "bold", colour = "white"),
@@ -165,7 +169,7 @@ last_emoji<-user_summarise%>%
   summarise(count= n())%>%
   ggplot(aes(x = reorder(lastEmoji,-count),y=count))+
     geom_bar(stat="identity", mapping=aes(fill=count))+
-  scale_fill_distiller(palette = "RdPu" )+
+  scale_fill_distiller(values = "RdPu" )+
   mytheme+
   themeBars+
   ggtitle('Last open emoji')+ 
@@ -216,7 +220,19 @@ diag(matriz_emojis)<-0
 matriz_emojis[upper.tri(matriz_emojis)] <- 0
 
 plot(hclust(as.dist(matriz_emojis)))
-
+emojis<-as.data.frame(matriz_emojis)%>%mutate(Freq=1/Freq)
+most_common_pairs<-emojis%>%filter(Freq!=Inf)%>% group_by(emoji1)%>%mutate(max=max(Freq))%>%filter(Freq==max)
+most_common_pairs%>%
+  graph_from_data_frame()%>%
+  ggraph(layout = 'sugiyama') +
+  geom_edge_link(aes(colour = Freq)) +
+  geom_node_point(color = "pink", size = 2) +
+  geom_node_text(aes(label = name),colour='white',size=6 ,repel = TRUE) +
+  scale_edge_color_distiller(palette = 'Set1')+
+  mytheme+theme(
+    axis.text.y=element_blank(),
+    axis.text.x=element_blank(),
+    axis.title = element_blank())
 
 ```
 
