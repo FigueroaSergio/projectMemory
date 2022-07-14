@@ -1,15 +1,25 @@
 ---
 title: "Memory analysis"
 output:
-  html_notebook:
-    css: style.css
   html_document:
     df_print: paged
     css: style.css
+  html_notebook:
+    css: style.css
 ---
 ## Introduction
+Currently, many apps with micro games claim to help people improve their brain skills like memory, mathematics, and problem-solving through daily use. 
+In this little experiment, we focus on a memory game to discover patterns in the Games and test if there is a real improvement in people who plays many times.
 
+### Targets
+Evaluate if there is an improvement in people who have played more games
+Observe if there are models for the matches
+Discover if there is a pattern between wrong pairs
 
+### Methodology
+Memory game was thought to be use on smartphones. Then each game has only 24 cards (12 pairs) arranged in a grid of six rows and four columns. At the beginning of the game, the player has 5 seconds to see all the cards and memorize their locations. Later every time a pair is open user has 1 second to see and continue.
+
+Once the game is over, a record is create with all the moves made for the player. Each movement is made of 8 variables, image, coordinates ( x, y ), and the timestamp to mark the moment when the cards were open. This data is usefull for analyzing the game. The coordinates, for example, will allow you to observe if there are points on the screen where the players concentrate more attention.
 
 ### Libraries
 ```{r message=FALSE, warning=FALSE}
@@ -217,7 +227,7 @@ most_common_pairs%>%
     axis.text.y=element_blank(),
     axis.text.x=element_blank(),
     axis.title = element_blank())+
-  ggtitle('Frequency most commont pairs')
+  ggtitle('Frequency most common wrong pairs')
 
 ```
 
