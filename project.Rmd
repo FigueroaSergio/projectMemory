@@ -8,7 +8,7 @@ output:
     css: style.css
 ---
 ## Introduction
-Currently the use of smartphone a electronic devices is 
+
 
 
 ## Libraries
@@ -19,6 +19,8 @@ library(dplyr)
 library(mongolite)
 library(modelr)
 library(cowplot)
+library(ggraph)
+library(igraph)
 ```
 
 ```{r include=FALSE}
@@ -169,7 +171,7 @@ last_emoji<-user_summarise%>%
   summarise(count= n())%>%
   ggplot(aes(x = reorder(lastEmoji,-count),y=count))+
     geom_bar(stat="identity", mapping=aes(fill=count))+
-  scale_fill_distiller(values = "RdPu" )+
+  scale_fill_distiller(palette = "RdPu" )+
   mytheme+
   themeBars+
   ggtitle('Last open emoji')+ 
