@@ -1,10 +1,10 @@
 ---
 title: "Memory analysis"
 output:
-  html_notebook:
-    css: style.css
   html_document:
     df_print: paged
+    css: style.css
+  html_notebook:
     css: style.css
 ---
 ## Introduction
@@ -190,13 +190,9 @@ user_summarise %>%
 Now if we get the data generates by the user with more game we can
 detect some things.
 
-- The mean is almost always over 0.6
-- Seams to be limit on 0.8
-- The behavior of the score is similar to a Sine wave
-
-The third one could suggest there is a cycle on the performance of the mind
-
-
+- The mean is almost always over 0.6 and seams to be limit on 0.8.
+- The behavior of the score is similar to a Sine wave.
+This could suggest there is a cycle on the performance even training every day
 
 ```{r}
 user_summarise %>%
@@ -207,6 +203,50 @@ user_summarise %>%
   mytheme+
   themeBars
 ```
+Meanwhile, taking the score and game duration present a clear correlation. The 
+result is completely normal, more wrong pairs longer the game as well. 
+Another reason could be if the user waits before start loses memory. 
+
+Finally, the reason why is a curve and not a line is simple, each wrong pair 
+force to open two another two pairs.
+
+```{r}
+more_games_2 = user_summarise%>%mutate(duration= as.numeric(duration))
+
+mod <- lm(score ~ log(duration), data = more_games_2)
+more_games_2%>%
+  add_predictions(mod)%>%
+  ggplot(aes(duration,score))+
+  geom_point(color=pink)+
+  geom_line(aes(duration,pred ),color='green')+
+  ggtitle('Score by Game Duration')+
+  xlab('Time (s)')+
+  ylab('Score')+
+  mytheme+
+  themeBars
+cor(as.numeric(more_games_2$duration),more_games_2$score)
+
+summary(mod)
+```
+
+```{r}
+full_table%>%
+  ggplot(aes(x1,y1))+
+  geom_bin_2d()+ 
+  scale_fill_distiller(palette = "RdPu")+
+  theme_void()+
+  mytheme+
+  ggtitle('Heatmap touch screen')
+```
+The heat map presented above helps us to understand what parts of the screen 
+take more attention. In the zones with more attention the cards  get opened
+faster consequently fewer touches.
+
+The interesting fact is the similarity with  [f-pattern of pattern reading on the web](https://www.nngroup.com/articles/f-shaped-pattern-reading-web-content/)
+and confirming the pattern on mobiles. 
+ 
+ ![Heatmap Pattern of Reading on the Web.](f-pattern.png)
+
 
 ```{r}
 first_emoji<-user_summarise%>%
@@ -239,13 +279,7 @@ plot_grid(first_emoji,last_emoji,nrow=1, ncol=2) +
 ```
 
 
-```{r}
-full_table%>%
-  ggplot(aes(x1,y1))+
-  geom_bin_2d()+ 
-  scale_fill_distiller(palette = "RdPu")+
-  theme_void()+mytheme
-```
+
 
 ```{r}
 emo1_emo2<-full_table%>%select(emoji1,emoji2)
@@ -256,14 +290,6 @@ matriz_emojis<-matriz_emojis+t(matriz_emojis) # taking advantage of  the symmetr
 
 comp<-matriz_emojis
 diag(comp)<-0
-
-as.data.frame(comp)%>%
- ggplot(aes(emoji1,emoji2, fill=Freq))+
-  geom_bin_2d()+scale_fill_distiller(palette = "RdPu")+
-  theme_void()+
-  mytheme+
-  themeBars+
-  ggtitle('Heatmap pairs')
 
 diag(matriz_emojis)<-0
 matriz_emojis[upper.tri(matriz_emojis)] <- 0
@@ -282,26 +308,3 @@ most_common_pairs%>%
   ggtitle('Frequency most common wrong pairs')
 
 ```
-
-### Modelling
-```{r}
-more_games_2=user_summarise%>%mutate(duration= as.numeric(duration))
-
-mod <- lm(score ~ log(duration), data = more_games_2)
-more_games_2%>%
-  add_predictions(mod)%>%
-  ggplot(aes(duration,score))+
-  geom_point(color=pink)+
-  geom_line(aes(duration,pred ),color='green')+
-  ggtitle('Score by Game Duration')+
-  xlab('Time (s)')+
-  ylab('Score')+
-  mytheme+
-  themeBars
-cor(as.numeric(more_games_2$duration),more_games_2$score)
-
-summary(mod)
-```
-
-
-
