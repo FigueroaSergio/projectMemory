@@ -1,10 +1,10 @@
 ---
 title: "Memory analysis"
 output:
+  html_notebook:
+    css: style.css
   html_document:
     df_print: paged
-    css: style.css
-  html_notebook:
     css: style.css
 ---
 ## Introduction
@@ -12,14 +12,22 @@ Currently, many apps with micro games claim to help people improve their brain s
 In this little experiment, we focus on a memory game to discover patterns in the Games and test if there is a real improvement in people who plays many times.
 
 ### Targets
-Evaluate if there is an improvement in people who have played more games
-Observe if there are models for the matches
-Discover if there is a pattern between wrong pairs
+- Evaluate if there is an improvement in people who have played more games
+- Observe if there are models for the matches
+- Discover if there is a pattern between wrong pairs
 
 ### Methodology
-Memory game was thought to be use on smartphones. Then each game has only 24 cards (12 pairs) arranged in a grid of six rows and four columns. At the beginning of the game, the player has 5 seconds to see all the cards and memorize their locations. Later every time a pair is open user has 1 second to see and continue.
+Memory game was thought to be used on smartphones. Then each game has only 24 
+cards (12 pairs) arranged in a grid of six rows and four columns. At the
+beginning of the game, the player has 5 seconds to see all the cards and memorize
+their locations. Later every time a pair is open user has 1 second to see and 
+continue.
 
-Once the game is over, a record is create with all the moves made for the player. Each movement is made of 8 variables, image, coordinates ( x, y ), and the timestamp to mark the moment when the cards were open. This data is usefull for analyzing the game. The coordinates, for example, will allow you to observe if there are points on the screen where the players concentrate more attention.
+Once the game is over, a record is created with all the moves made for the player. 
+Each movement is made of 8 variables, image, coordinates ( x, y ), and the 
+timestamp to mark the moment when the cards were open. This data is useful for 
+analyzing the game. The coordinates, for example, will allow you to observe if 
+there are points on the screen where the players concentrate more attention.
 
 ### Libraries
 ```{r message=FALSE, warning=FALSE}
@@ -31,6 +39,7 @@ library(modelr)
 library(cowplot)
 library(ggraph)
 library(igraph)
+library(lubridate)
 ```
 
 ```{r include=FALSE}
@@ -79,7 +88,6 @@ pink= "#FF2E8C"
 ```{r include=FALSE}
 urldb='mongodb+srv://admin:AvrilFG123@mystore.96rrl.mongodb.net/game-memory?retryWrites=true&w=majority'
 ```
-
 ```{r}
 
 connectionGames = mongo(collection="games", url=urldb)
@@ -87,61 +95,74 @@ connectionUsers = mongo(collection="users", url=urldb)
 connectionMoves = mongo(collection="moves", url=urldb)
 
 games <- connectionGames$find('{}',fields = '{"user":true}')%>%as_tibble()
-user <- connectionUsers$find('{}',fields = '{"age" : true,"sex":true,"email":true}')%>%as_tibble()
+user <- connectionUsers$find('{}',fields = '{"age" : true,"sex":true,"email":true }')%>%as_tibble()
 moves <- connectionMoves$find('{}')%>%as_tibble()
 ```
-
-
+### Transform Data
+First of all, separating the columns card1, and card2 into three variables is 
+necessary because the image and coordinates (x, y) were saved in the database as
+a vector. Then create one table joining tables games users and moves.
 ```{r}
 separateList <- function(df,column, names){
   return(
-    df%>%unnest(column )%>%
+    df%>%
+      unnest(column )%>% # separate a list a create new to rows
       group_by(id) %>% 
-      mutate(col=names) %>% #add a column indicator
-      spread(key=col, value=column)
+      mutate(col = names ) %>% #add a column indicator
+      spread(key = col, value = column)
   )
 }
 ```
-
-
-### Trasnsform Data
 ```{r message=FALSE, warning=FALSE, result=FALSE}
 
- full_table<-moves %>% mutate(id = 1:nrow(moves)) %>% 
-  separateList('card1',c('x1','y1','emoji1')) %>%   
-  separateList('card2',c('x2','y2','emoji2')) %>%
-  inner_join(games, by=c("game"="_id"))%>%
-  left_join(user,by=c("user"="_id"))
-full_table$id=NULL
+ full_table <- moves %>% 
+  mutate(id = 1:nrow(moves)) %>% 
+  separateList('card1', c('x1', 'y1', 'emoji1')) %>%   
+  separateList('card2', c('x2', 'y2', 'emoji2')) %>%
+  inner_join(games, by=c("game" = "_id" ))%>%
+  inner_join(user, by=c("user" = "_id" ))
+
+full_table$id = NULL
 
 ```
-
-
+Build a table that summarizes each game, notice this table has information about 
+how many moves were required to win, the duration of the game base on the timestamp 
+of moves, and some information about the first and last emojis opened
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 user_summarise <- full_table %>%
     arrange(start) %>% 
     group_by(game, user, sex ) %>% 
-    mutate(time=end-start) %>%
+    mutate(time = end-start) %>%
     summarise(count = n(),
               mean = mean(time), 
-              score=mean(match), 
-              start_game=first(start), 
-              end_game=last(end), 
-              firstEmoji=first(emoji1),
-              secondEmoji=nth(emoji1,2),
-              thirdEmoji=nth(emoji1,3),
-              last2Emoji=nth(emoji1,-3),
-              last1Emoji=nth(emoji1,-2),
-              lastEmoji=last(emoji1)
-              , .groups = 'drop') %>% 
-              arrange(start_game)%>%
-  group_by(user)%>%
-  mutate(game=row_number(), 
-         duration=end_game-start_game)
+              score = mean(match), 
+              start_game = first(start), 
+              end_game = last(end), 
+              firstEmoji = first(emoji1),
+              secondEmoji = nth(emoji1,2),
+              thirdEmoji = nth(emoji1,3),
+              last2Emoji = nth(emoji1,-3),
+              last1Emoji = nth(emoji1,-2),
+              lastEmoji = last(emoji1)
+              , .groups = 'drop') %>% # each row is a game
+    arrange(start_game)%>% # order by start game
+    group_by(user)%>%
+    mutate(game = row_number(), # change game id to an increasing number
+           duration = end_game-start_game)
 user_summarise
 ```
 
-### Visualise
+### Analysis
+To have a preview of the data generate a scatter plot with the score, game, and user.
+```{r echo=FALSE}
+ggplot(data=user_summarise, mapping = aes(x = start_game, y=score, color=user))+
+  geom_point(size=3)+
+  mytheme+
+  themeBars
+```
+The graph gives us some interesting information. There is a group that 
+uses the app more. In effect, if we realize another graph number of games by 
+the user, the differences becomes clear.
 ```{r}
 ggplot(data=user_summarise)+
   geom_bar(mapping = aes(x = reorder(user,-game), fill = sex))+
@@ -150,13 +171,41 @@ ggplot(data=user_summarise)+
   mytheme+
   themeBars+
   theme(axis.text.x=element_blank())+
+  ggtitle('Games by user')+
   ylab('# games')+
   xlab('user')
 ```
+Here we can observe it is a bit improvement after the 8th game this could 
+happen because as a person who trains every day the results don't get
+visible immediately
+```{r}
+user_summarise %>%
+  filter(game<=11) %>%
+  ggplot(aes(game,score, group=game))+
+  geom_boxplot( fill = pink, colour = "white")+
+  ggtitle("Score by game")+
+  mytheme+
+  themeBars
+```
+Now if we get the data generates by the user with more game we can
+detect some things.
+
+- The mean is almost always over 0.6
+- Seams to be limit on 0.8
+- The behavior of the score is similar to a Sine wave
+
+The third one could suggest there is a cycle on the performance of the mind
+
+
 
 ```{r}
-ggplot(data=user_summarise, mapping = aes(x = start_game, y=score, color=user))+
-  geom_point(size=3)+theme_void()+mytheme+themeBars
+user_summarise %>%
+  filter(game>11) %>%
+  ggplot(aes(game,score, group=game))+
+  geom_boxplot( fill = pink, colour = "white")+
+  labs(title="Score by game")+
+  mytheme+
+  themeBars
 ```
 
 ```{r}
@@ -165,23 +214,26 @@ first_emoji<-user_summarise%>%
   summarise(count= n())%>%
   ggplot(aes(x = reorder(firstEmoji,-count),y=count))+
     geom_bar(stat="identity", mapping=aes( fill=count))+
-  scale_fill_distiller(palette = "RdPu" )+
-  mytheme+
-  themeBars+
-  ggtitle('First open emoji')+  
-  xlab('emoji')+
-  theme(legend.position = "none")
+    scale_fill_distiller(palette = "RdPu" )+
+    mytheme+
+    themeBars+
+    ggtitle('First open emoji')+  
+    xlab('emoji')+
+    theme(legend.position = "none")
+
 last_emoji<-user_summarise%>%
   group_by(lastEmoji)%>%
   summarise(count= n())%>%
   ggplot(aes(x = reorder(lastEmoji,-count),y=count))+
     geom_bar(stat="identity", mapping=aes(fill=count))+
-  scale_fill_distiller(palette = "RdPu" )+
-  mytheme+
-  themeBars+
-  ggtitle('Last open emoji')+ 
-  xlab('emoji')+
-  theme(legend.position = "none")
+    scale_fill_distiller(palette = "RdPu" )+
+    mytheme+
+    themeBars+
+    ggtitle('Last open emoji')+ 
+    xlab('emoji')+
+    theme(legend.position = "none")
+
+
 plot_grid(first_emoji,last_emoji,nrow=1, ncol=2) + 
   theme(plot.background = element_rect(fill="#0c1329", color = NA))
 ```
@@ -252,12 +304,4 @@ summary(mod)
 ```
 
 
-```{r}
-user_summarise %>%
-  filter(game<=10) %>%
-  ggplot(aes(game,score, group=game))+
-  geom_boxplot( fill = pink, colour = "white")+
-  ggtitle("Score by game")+
-  mytheme+
-  themeBars
-```
+
